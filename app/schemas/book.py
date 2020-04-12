@@ -26,7 +26,7 @@ class BookUpdate(BookBase):
 class BookInDBBase(BookBase):
     id: int
     index: str
-    data: str
+    data: dict
     last_updated_id: int
 
     class Config:
