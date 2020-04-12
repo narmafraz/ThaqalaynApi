@@ -5,17 +5,16 @@ from .user import User
 
 # Shared properties
 class BookBase(BaseModel):
-    type: str = None
+    kind: str = None
     index: str = None
-    title: str = None
-    description: str = None
+    data: dict = None
 
 
 # Properties to receive on book creation
 class BookCreate(BookBase):
-    type: str
+    kind: str
     index: str
-    title: str
+    data: dict
 
 
 # Properties to receive on book update
@@ -27,7 +26,7 @@ class BookUpdate(BookBase):
 class BookInDBBase(BookBase):
     id: int
     index: str
-    title: str
+    data: str
     last_updated_id: int
 
     class Config:

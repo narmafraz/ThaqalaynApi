@@ -23,12 +23,12 @@ class CRUDBook(CRUDBase[Book, BookCreate, BookUpdate]):
         return db_session.query(self.model).filter(self.model.index == index).first()
 
     def get_multi_filter(
-        self, db_session: Session, *, type: str, skip=0, limit=100
+        self, db_session: Session, *, kind: str, skip=0, limit=100
     ) -> List[Book]:
         q = db_session.query(self.model)
         
-        if not(type is None):
-            q = q.filter(Book.type == type)
+        if not(kind is None):
+            q = q.filter(Book.kind == kind)
 
         return (
             q.offset(skip)

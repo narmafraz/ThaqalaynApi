@@ -17,12 +17,12 @@ def read_books(
     db: Session = Depends(get_db),
     skip: int = 0,
     limit: int = 100,
-    type: str = None
+    kind: str = None
 ):
     """
     Retrieve books.
     """
-    books = crud.book.get_multi_filter(db, skip=skip, limit=limit, type=type)
+    books = crud.book.get_multi_filter(db, skip=skip, limit=limit, kind=kind)
     return books
 
 
