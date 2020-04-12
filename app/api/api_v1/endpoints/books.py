@@ -7,98 +7,87 @@ from app import crud
 from app.api.utils.db import get_db
 from app.api.utils.security import get_current_active_user
 from app.models.user import User as DBUser
-from app.schemas.item import Item, ItemCreate, ItemUpdate
+from app.schemas.book import Book, BookCreate, BookUpdate
 
 router = APIRouter()
 
 
-@router.get("/", response_model=List[Item])
-def read_items(
+@router.get("/", response_model=List[Book])
+def read_books(
     db: Session = Depends(get_db),
     skip: int = 0,
     limit: int = 100,
-    current_user: DBUser = Depends(get_current_active_user),
 ):
     """
-    Retrieve items.
+    Retrieve books.
     """
-    if crud.user.is_superuser(current_user):
-        items = crud.item.get_multi(db, skip=skip, limit=limit)
-    else:
-        items = crud.item.get_multi_by_owner(
-            db_session=db, owner_id=current_user.id, skip=skip, limit=limit
-        )
-    return items
+    books = crud.book.get_multi(db, skip=skip, limit=limit)
+    return books
 
 
-@router.post("/", response_model=Item)
-def create_item(
+@router.post("/", response_model=Book)
+def create_book(
     *,
     db: Session = Depends(get_db),
-    item_in: ItemCreate,
+    book_in: BookCreate,
     current_user: DBUser = Depends(get_current_active_user),
 ):
     """
-    Create new item.
+    Create new book.
     """
-    item = crud.item.create_with_owner(
-        db_session=db, obj_in=item_in, owner_id=current_user.id
+    book = crud.book.create_by_user(
+        db_session=db, obj_in=book_in, user_id=current_user.id
     )
-    return item
+    return book
 
 
-@router.put("/{id}", response_model=Item)
-def update_item(
+@router.put("/{index}", response_model=Book)
+def update_book(
     *,
     db: Session = Depends(get_db),
-    id: int,
-    item_in: ItemUpdate,
+    index: str,
+    book_in: BookUpdate,
     current_user: DBUser = Depends(get_current_active_user),
 ):
     """
-    Update an item.
+    Update an book.
     """
-    item = crud.item.get(db_session=db, id=id)
-    if not item:
-        raise HTTPException(status_code=404, detail="Item not found")
-    if not crud.user.is_superuser(current_user) and (item.owner_id != current_user.id):
-        raise HTTPException(status_code=400, detail="Not enough permissions")
-    item = crud.item.update(db_session=db, db_obj=item, obj_in=item_in)
-    return item
+    book = crud.book.get_by_index(db_session=db, index=index)
+    if not book:
+        raise HTTPException(status_code=404, detail="Book not found")
+    book = crud.book.update(db_session=db, db_obj=book, obj_in=book_in)
+    return book
 
 
-@router.get("/{id}", response_model=Item)
-def read_item(
+@router.get("/{index}", response_model=Book)
+def read_book(
     *,
     db: Session = Depends(get_db),
-    id: int,
+    index: str,
+):
+    """
+    Get book by ID.
+    """
+    book = crud.book.get_by_index(db_session=db, index=index)
+    if not book:
+        raise HTTPException(status_code=404, detail="Book not found")
+    return book
+
+
+@router.delete("/{index}", response_model=Book)
+def delete_book(
+    *,
+    db: Session = Depends(get_db),
+    index: str,
     current_user: DBUser = Depends(get_current_active_user),
 ):
     """
-    Get item by ID.
+    Delete an book.
     """
-    item = crud.item.get(db_session=db, id=id)
-    if not item:
-        raise HTTPException(status_code=404, detail="Item not found")
-    if not crud.user.is_superuser(current_user) and (item.owner_id != current_user.id):
+    book = crud.book.get_by_index(db_session=db, index=index)
+    if not book:
+        raise HTTPException(status_code=404, detail="Book not found")
+    if not crud.user.is_superuser(current_user) and (book.owner_id != current_user.id):
         raise HTTPException(status_code=400, detail="Not enough permissions")
-    return item
-
-
-@router.delete("/{id}", response_model=Item)
-def delete_item(
-    *,
-    db: Session = Depends(get_db),
-    id: int,
-    current_user: DBUser = Depends(get_current_active_user),
-):
-    """
-    Delete an item.
-    """
-    item = crud.item.get(db_session=db, id=id)
-    if not item:
-        raise HTTPException(status_code=404, detail="Item not found")
-    if not crud.user.is_superuser(current_user) and (item.owner_id != current_user.id):
-        raise HTTPException(status_code=400, detail="Not enough permissions")
-    item = crud.item.remove(db_session=db, id=id)
-    return item
+    book = crud.book.remove(db_session=db, id=book.id)
+    return book

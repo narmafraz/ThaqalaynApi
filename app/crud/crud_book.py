@@ -1,34 +1,37 @@
-from typing import List
+from typing import List, Optional
 
 from fastapi.encoders import jsonable_encoder
 from sqlalchemy.orm import Session
 
-from app.models.item import Item
-from app.schemas.item import ItemCreate, ItemUpdate
 from app.crud.base import CRUDBase
+from app.models.book import Book
+from app.schemas.book import BookCreate, BookUpdate
 
 
-class CRUDItem(CRUDBase[Item, ItemCreate, ItemUpdate]):
-    def create_with_owner(
-        self, db_session: Session, *, obj_in: ItemCreate, owner_id: int
-    ) -> Item:
+class CRUDBook(CRUDBase[Book, BookCreate, BookUpdate]):
+    def create_by_user(
+        self, db_session: Session, *, obj_in: BookCreate, user_id: int
+    ) -> Book:
         obj_in_data = jsonable_encoder(obj_in)
-        db_obj = self.model(**obj_in_data, owner_id=owner_id)
+        db_obj = self.model(**obj_in_data, last_updated_id=user_id)
         db_session.add(db_obj)
         db_session.commit()
         db_session.refresh(db_obj)
         return db_obj
 
-    def get_multi_by_owner(
-        self, db_session: Session, *, owner_id: int, skip=0, limit=100
-    ) -> List[Item]:
+    def get_by_index(self, db_session: Session, index: str) -> Optional[Book]:
+        return db_session.query(self.model).filter(self.model.index == index).first()
+
+    def get_multi_by_index(
+        self, db_session: Session, *, indexes: List[str], skip=0, limit=100
+    ) -> List[Book]:
         return (
             db_session.query(self.model)
-            .filter(Item.owner_id == owner_id)
+            .filter(Book.index in indexes)
             .offset(skip)
             .limit(limit)
             .all()
         )
 
 
-item = CRUDItem(Item)
+book = CRUDBook(Book)
