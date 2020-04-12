@@ -22,6 +22,20 @@ class CRUDBook(CRUDBase[Book, BookCreate, BookUpdate]):
     def get_by_index(self, db_session: Session, index: str) -> Optional[Book]:
         return db_session.query(self.model).filter(self.model.index == index).first()
 
+    def get_multi_filter(
+        self, db_session: Session, *, type: str, skip=0, limit=100
+    ) -> List[Book]:
+        q = db_session.query(self.model)
+        
+        if not(type is None):
+            q = q.filter(Book.type == type)
+
+        return (
+            q.offset(skip)
+            .limit(limit)
+            .all()
+        )
+
     def get_multi_by_index(
         self, db_session: Session, *, indexes: List[str], skip=0, limit=100
     ) -> List[Book]:

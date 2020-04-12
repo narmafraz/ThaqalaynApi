@@ -5,6 +5,7 @@ from .user import User
 
 # Shared properties
 class BookBase(BaseModel):
+    type: str = None
     index: str = None
     title: str = None
     description: str = None
@@ -12,6 +13,7 @@ class BookBase(BaseModel):
 
 # Properties to receive on book creation
 class BookCreate(BookBase):
+    type: str
     index: str
     title: str
 
