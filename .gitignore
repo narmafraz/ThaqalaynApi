@@ -1,0 +1,5 @@
+.vscode/
+env/
+thaqalayn/
+__pycache__
+**/*.db
