@@ -1,4 +1,5 @@
 from .crud_book import book
+from .crud_book_part import book_part
 from .crud_item import item
 from .crud_user import user
 
