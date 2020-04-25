@@ -3,3 +3,4 @@ env/
 thaqalayn/
 __pycache__
 **/*.db
+out/
