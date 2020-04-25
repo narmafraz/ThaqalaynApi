@@ -7,4 +7,5 @@ $Env:FIRST_SUPERUSER_PASSWORD = "changethis_first_superuser_password"
 
 python .\app\backend_pre_start.py
 python .\app\initial_data.py
-uvicorn main:app --reload
+uvicorn main:app
+# --reload
