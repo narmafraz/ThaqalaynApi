@@ -4,3 +4,7 @@ thaqalayn/
 __pycache__
 **/*.db
 out/
+
+# unsure if we want to include the actual data
+data/**/*.txt
+data/**/*.xml
