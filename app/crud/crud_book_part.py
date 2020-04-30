@@ -47,5 +47,16 @@ class CRUDBookPart(CRUDBase[BookPart, BookPartCreate, BookPartUpdate]):
             .all()
         )
 
+    def upsert(
+        self, db_session: Session, *, obj_in: BookPartCreate
+    ) -> BookPart:
+        book_part = self.get_by_index(db_session=db_session, index=obj_in.index)
+        if book_part:
+            book_part = self.update(db_session=db_session, db_obj=book_part, obj_in=obj_in)
+        else:
+            book_part = self.create(db_session=db_session, obj_in=obj_in)
+            
+        return book_part
+
 
 book_part = CRUDBookPart(BookPart)

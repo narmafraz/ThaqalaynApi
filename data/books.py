@@ -32,18 +32,18 @@ def init_books(db_session: Session):
 			{
 				"index": QURAN_INDEX,
 				"names": {
-					Language.EN: "The Noble Quran",
-					Language.AR: "القرآن الكريم"
+					Language.EN.value: "The Noble Quran",
+					Language.AR.value: "القرآن الكريم"
 				}
 			}
 		]
 	}
 
-	data_json = json.dumps(data_root)
 	obj_in = BookPartCreate (
 		index = BOOK_INDEX,
 		kind = "chapter_list",
-		data = data_json
+		data = data_root,
+		last_updated_id = 1
 	)
-	book = crud.book_part.create(db_session, obj_in=obj_in)
+	book = crud.book_part.upsert(db_session, obj_in=obj_in)
 	logger.info("Inserted books list into book_part ID %i with index %s", book.id, book.index)

@@ -1,6 +1,6 @@
 from typing import Dict, List
 
-from data.models import Language, Translation
+from data.models.translation import Language, Translation
 
 
 class Verse():
@@ -14,11 +14,11 @@ class Chapter():
 	index: int
 	verseCount: int
 	verseStartIndex: int
-	names: Dict[Language, str]
+	names: Dict[str, str]
 	type: str
 	order: int
 	rukus: int
-	sajda_type: str
+	sajda_type: str = None
 
 class Quran():
 	chapters: List[Chapter]

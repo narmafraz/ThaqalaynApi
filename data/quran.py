@@ -17,7 +17,7 @@ from app.db import base
 from app.db.base import Base
 from app.db.session import engine
 from app.schemas.book_part import BookPartCreate
-from data.models import Chapter, Quran, Translation, Verse
+from data.models import Chapter, Language, Quran, Translation, Verse
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -56,19 +56,19 @@ def build_chapters(file: str, verses: List[Verse]) -> List[Chapter]:
 		rukus=int(meta['rukus'])
 
 		names = {
-			'ar': name,
-			'en': ename,
-			'ent': tname
+			Language.AR.value: name,
+			Language.EN.value: ename,
+			Language.ENT.value: tname
 		}
 
 		sura = Chapter()
-		sura.index=index,
-		sura.names=names,
-		sura.verseCount=ayas,
-		sura.verseStartIndex=start,
-		sura.type=type,
-		sura.order=order,
-		sura.rukus=rukus,
+		sura.index=index
+		sura.names=names
+		sura.verseCount=ayas
+		sura.verseStartIndex=start
+		sura.type=type
+		sura.order=order
+		sura.rukus=rukus
 		sura.verses=verses[start:ayas+start]
 
 		chapters.append(sura)
@@ -80,13 +80,13 @@ def build_chapters(file: str, verses: List[Verse]) -> List[Chapter]:
 		sajda_chapter.sajda_type = v
 		sajda_chapter.verses[aya_index - 1].sajda_type = v
 
-
-
 	# add_group_data(quran, ayaindex, 'juzs', 'juz')
 	# add_group_data(quran, ayaindex, 'hizbs', 'quarter')
 	# add_group_data(quran, ayaindex, 'manzils', 'manzil')
 	# add_group_data(quran, ayaindex, 'rukus', 'ruku')
 	# add_group_data(quran, ayaindex, 'pages', 'page')
+
+	return chapters
 
 
 
@@ -103,6 +103,7 @@ def build_verses(file):
 				verse = Verse()
 				verse.index=index
 				verse.text=text
+				verse.translations=[]
 
 				verses.append(verse)
 	
@@ -112,7 +113,7 @@ def insert_quran_translation(verses, file, key, lang, author, bio):
 	logger.info("Adding Quran translation file %s", file)
 
 	index = 0
-	with open(file, 'r') as qfile:
+	with open(file, 'r', encoding='utf8') as qfile:
 		for line in qfile.readlines():
 			text = line.strip()
 			if text and not text.startswith('#'):
@@ -176,7 +177,7 @@ def insert_chapters_list(db: Session, quran: Quran):
 
 	for chapter in quran.chapters:
 		data_chapter = {
-			"index": BOOK_INDEX + ":" + chapter.index,
+			"index": BOOK_INDEX + ":" + str(chapter.index),
 			"verseCount": chapter.verseCount,
 			"verseStartIndex": chapter.verseStartIndex,
 			"names": chapter.names,
@@ -187,13 +188,13 @@ def insert_chapters_list(db: Session, quran: Quran):
 		}
 		chapters.append(data_chapter)
 
-	data_json = json.dumps(data_root)
 	obj_in = BookPartCreate (
 		index = BOOK_INDEX,
 		kind = "chapter_list",
-		data = data_json
+		data = data_root,
+		last_updated_id = 1
 	)
-	book = crud.book_part.create(db, obj_in=obj_in)
+	book = crud.book_part.upsert(db, obj_in=obj_in)
 	logger.info("Inserted Quran chapter list into book_part ID %i with index %s", book.id, book.index)
 
 def insert_chapter_content(db: Session, quran: Quran):

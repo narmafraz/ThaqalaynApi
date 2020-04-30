@@ -1,3 +1,3 @@
 from .language import Language
-from .quran import *
-from .translation import *
+from .quran import Chapter, Quran, Verse
+from .translation import Translation

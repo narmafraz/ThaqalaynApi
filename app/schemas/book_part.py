@@ -15,10 +15,14 @@ class BookPartCreate(BookPartBase):
     kind: str
     index: str
     data: dict
+    last_updated_id: int
 
 
 # Properties to receive on book_part update
 class BookPartUpdate(BookPartBase):
+    kind: str
+    data: dict
+    last_updated_id: int
     pass
 
 
