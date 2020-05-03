@@ -171,13 +171,20 @@ def build_quran() -> Quran:
 
 def insert_chapters_list(db: Session, quran: Quran):
 	data_root = {
+		"titles": {
+			Language.EN.value: "The Holy Quran",
+			Language.AR.value: "القرآن الكريم"
+		},
+		"descriptions": {
+			Language.EN.value: "Was revealed to the prophet SAW"
+		},
 		"chapters": []
 	}
 	chapters = data_root["chapters"]
 
 	for chapter in quran.chapters:
 		data_chapter = {
-			"index": BOOK_INDEX + ":" + str(chapter.index),
+			"index": chapter.index,
 			"verseCount": chapter.verseCount,
 			"verseStartIndex": chapter.verseStartIndex,
 			"names": chapter.names,
@@ -198,12 +205,17 @@ def insert_chapters_list(db: Session, quran: Quran):
 	logger.info("Inserted Quran chapter list into book_part ID %i with index %s", book.id, book.index)
 
 def insert_chapter_content(db: Session, quran: Quran):
-	pass
-
-def insert_quran_content(db: Session, quran: Quran):
-	pass
+	for chapter in quran.chapters:
+		obj_in = BookPartCreate (
+			index = BOOK_INDEX + ":" + str(chapter.index),
+			kind = "verse_list",
+			data = chapter,
+			last_updated_id = 1
+		)
+		book = crud.book_part.upsert(db, obj_in=obj_in)
+		logger.info("Inserted Quran chapter content into book_part ID %i with index %s", book.id, chapter.index)
 
 def init_quran(db_session: Session):
 	quran = build_quran()
 	insert_chapters_list(db_session, quran)
-	insert_quran_content(db_session, quran)
+	insert_chapter_content(db_session, quran)

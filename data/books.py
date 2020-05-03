@@ -32,7 +32,7 @@ def init_books(db_session: Session):
 			{
 				"index": QURAN_INDEX,
 				"names": {
-					Language.EN.value: "The Noble Quran",
+					Language.EN.value: "The Holy Quran",
 					Language.AR.value: "القرآن الكريم"
 				}
 			}
