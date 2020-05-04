@@ -1,4 +1,5 @@
 from fastapi import FastAPI
+from fastapi.middleware.gzip import GZipMiddleware
 from starlette.middleware.cors import CORSMiddleware
 from starlette.requests import Request
 
@@ -24,6 +25,8 @@ if config.BACKEND_CORS_ORIGINS:
         allow_methods=["*"],
         allow_headers=["*"],
     ),
+
+app.add_middleware(GZipMiddleware)
 
 app.include_router(api_router, prefix=config.API_V1_STR)
 
