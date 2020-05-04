@@ -24,13 +24,20 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 BOOK_INDEX = "books"
+BOOK_PATH = "/books/"
 
 def init_books(db_session: Session):
 	data_root = {
-		"title": "books",
+		"titles": {
+			Language.EN.value: "Books",
+		},
+		"descriptions": {
+			Language.EN.value: "The two weighty things at your fingertips!"
+		},
 		"chapters": [
 			{
 				"index": QURAN_INDEX,
+				"path": BOOK_PATH + QURAN_INDEX,
 				"names": {
 					Language.EN.value: "The Holy Quran",
 					Language.AR.value: "القرآن الكريم"
