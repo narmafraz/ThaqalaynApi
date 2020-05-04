@@ -23,6 +23,7 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 BOOK_INDEX = "quran"
+BOOK_PATH = "/books/" + BOOK_INDEX
 
 def get_sajda_data(quran):
 	sajdas = {}
@@ -63,13 +64,18 @@ def build_chapters(file: str, verses: List[Verse]) -> List[Chapter]:
 
 		sura = Chapter()
 		sura.index=index
+		sura.path=BOOK_PATH + ":" + str(index)
 		sura.names=names
-		sura.verseCount=ayas
-		sura.verseStartIndex=start
+		sura.verse_count=ayas
+		sura.verse_start_index=start
 		sura.type=type
 		sura.order=order
 		sura.rukus=rukus
 		sura.verses=verses[start:ayas+start]
+
+		# set verse path
+		for verse in sura.verses:
+			verse.path=sura.path + ":" + str(verse.index)
 
 		chapters.append(sura)
 
@@ -185,8 +191,9 @@ def insert_chapters_list(db: Session, quran: Quran):
 	for chapter in quran.chapters:
 		data_chapter = {
 			"index": chapter.index,
-			"verseCount": chapter.verseCount,
-			"verseStartIndex": chapter.verseStartIndex,
+			"path": chapter.path,
+			"verse_count": chapter.verse_count,
+			"verse_start_index": chapter.verse_start_index,
 			"names": chapter.names,
 			"verse_type": chapter.type,
 			"order": chapter.order,

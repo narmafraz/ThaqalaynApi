@@ -5,6 +5,7 @@ from data.models.translation import Language, Translation
 
 class Verse():
 	index: int
+	path: str
 	text: str
 	sajda_type: str
 	translations: List[Translation]
@@ -12,8 +13,9 @@ class Verse():
 class Chapter():
 	verses: List[Verse]
 	index: int
-	verseCount: int
-	verseStartIndex: int
+	path: str
+	verse_count: int
+	verse_start_index: int
 	names: Dict[str, str]
 	type: str
 	order: int
