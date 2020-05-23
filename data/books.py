@@ -17,6 +17,7 @@ from app.db import base
 from app.db.base import Base
 from app.db.session import engine
 from app.schemas.book_part import BookPartCreate
+from data.kafi import BOOK_INDEX as KAFI_INDEX
 from data.models import Language
 from data.quran import BOOK_INDEX as QURAN_INDEX
 
@@ -38,11 +39,19 @@ def init_books(db_session: Session):
 			{
 				"index": QURAN_INDEX,
 				"path": BOOK_PATH + QURAN_INDEX,
-				"names": {
+				"titles": {
 					Language.EN.value: "The Holy Quran",
 					Language.AR.value: "القرآن الكريم"
 				}
-			}
+			},
+			{
+				"index": KAFI_INDEX,
+				"path": BOOK_PATH + KAFI_INDEX,
+				"titles": {
+					Language.EN.value: "Al-Kafi",
+					Language.AR.value: "الكافي"
+				}
+			},
 		]
 	}
 
