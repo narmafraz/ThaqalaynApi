@@ -56,7 +56,7 @@ def build_chapters(file: str, verses: List[Verse]) -> List[Chapter]:
 		order=int(meta['order'])
 		rukus=int(meta['rukus'])
 
-		names = {
+		titles = {
 			Language.AR.value: name,
 			Language.EN.value: ename,
 			Language.ENT.value: tname
@@ -65,7 +65,7 @@ def build_chapters(file: str, verses: List[Verse]) -> List[Chapter]:
 		sura = Chapter()
 		sura.index=index
 		sura.path=BOOK_PATH + ":" + str(index)
-		sura.names=names
+		sura.titles=titles
 		sura.verse_count=ayas
 		sura.verse_start_index=start
 		sura.type=type
@@ -194,7 +194,7 @@ def insert_chapters_list(db: Session, quran: Quran):
 			"path": chapter.path,
 			"verse_count": chapter.verse_count,
 			"verse_start_index": chapter.verse_start_index,
-			"names": chapter.names,
+			"titles": chapter.titles,
 			"verse_type": chapter.type,
 			"order": chapter.order,
 			"sajda_type": chapter.sajda_type,
