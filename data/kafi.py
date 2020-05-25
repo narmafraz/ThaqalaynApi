@@ -59,7 +59,7 @@ def build_alhassanain_baabs(file, index_suffix: str) -> List[Chapter]:
 			baab_titles = extract_headings(headings)
 			index = index + 1
 			baab = Chapter()
-			baab.index = BOOK_INDEX + index_suffix + ":" + str(index)
+			baab.index = index
 			baab.path = BOOK_PATH + index_suffix + ":" + str(index)
 			baab.titles = baab_titles
 			baab.chapters = []
@@ -80,7 +80,7 @@ def build_alhassanain_baabs(file, index_suffix: str) -> List[Chapter]:
 
 				chapter_index = chapter_index + 1
 				chapter = Chapter()
-				chapter.index = baab.index + ":" + str(chapter_index)
+				chapter.index = chapter_index
 				chapter.path = baab.path + ":" + str(chapter_index)
 				chapter.titles = chapter_titles
 				chapter.verses = []
@@ -102,7 +102,7 @@ def build_alhassanain_baabs(file, index_suffix: str) -> List[Chapter]:
 						
 						verse_index = verse_index + 1
 						verse = Verse()
-						verse.index = chapter.index + ":" + str(verse_index)
+						verse.index = verse_index
 						verse.path = chapter.path + ":" + str(verse_index)
 						translation = Translation()
 						translation.name = "hubeali"
@@ -127,7 +127,7 @@ def build_alhassanain_baabs(file, index_suffix: str) -> List[Chapter]:
 			
 def build_alhassanain_volume(file, index_suffix: str, title_en: str, title_ar: str, description: str) -> Chapter:
 	volume = Chapter()
-	volume.index = BOOK_INDEX + index_suffix
+	volume.index = int(index_suffix[1:])
 	volume.path = BOOK_PATH + index_suffix
 	volume.titles = {
 		Language.EN.value: title_en,
@@ -197,6 +197,9 @@ def insert_chapter(db: Session, book: Chapter):
 	if has_verses(book):
 		insert_chapter_content(db, book)
 
+def index_from_path(path: str) -> str:
+	return path[7:]
+
 def insert_chapters_list(db: Session, book: Chapter):
 	data_root = {
 		"titles": book.titles,
@@ -226,26 +229,26 @@ def insert_chapters_list(db: Session, book: Chapter):
 		chapters.append(data_chapter)
 
 	obj_in = BookPartCreate (
-		index = book.index,
+		index = index_from_path(book.path),
 		kind = "chapter_list",
 		data = data_root,
 		last_updated_id = 1
 	)
 	book_part = crud.book_part.upsert(db, obj_in=obj_in)
-	logger.info("Inserted chapter list into book_part ID %i with index %s", book_part.id, book_part.index)
+	logger.info("Inserted chapter list into book_part ID %i with path %s", book_part.id, book_part.path)
 
 	for chapter in book.chapters:
 		insert_chapter(db, chapter)
 
 def insert_chapter_content(db: Session, chapter: Chapter):
 	obj_in = BookPartCreate (
-		index = chapter.index,
+		index = index_from_path(chapter.path),
 		kind = "verse_list",
 		data = chapter,
 		last_updated_id = 1
 	)
 	book = crud.book_part.upsert(db, obj_in=obj_in)
-	logger.info("Inserted Quran chapter content into book_part ID %i with index %s", book.id, chapter.index)
+	logger.info("Inserted chapter content into book_part ID %i with path %s", book.id, chapter.path)
 
 def init_kafi(db_session: Session):
 	book = build_kafi()

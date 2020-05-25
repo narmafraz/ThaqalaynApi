@@ -16,7 +16,7 @@ class Verse():
 class Chapter():
 	verses: List[Verse]
 	chapters: List[Chapter]
-	index: str
+	index: int
 	path: str
 	verse_count: int
 	verse_start_index: int
