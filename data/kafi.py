@@ -41,7 +41,7 @@ def extract_headings(headings):
 	return names
 
 
-def build_alhassanain_baabs(file, index_suffix: str) -> List[Chapter]:
+def build_alhassanain_baabs(file) -> List[Chapter]:
 	baabs: List[Chapter] = []
 	logger.info("Adding Al-Kafi file %s", file)
 
@@ -50,7 +50,6 @@ def build_alhassanain_baabs(file, index_suffix: str) -> List[Chapter]:
 		#content_div = soup.find(id="bookContent")
 		inner_html = qfile.read()
 		sections = inner_html.split("<br clear=all>")
-		index = 0
 		for section in sections:
 			section_soup = BeautifulSoup(section, 'html.parser')
 			
@@ -69,10 +68,7 @@ def build_alhassanain_baabs(file, index_suffix: str) -> List[Chapter]:
 					baab = existing_baab
 			
 			if not baab:
-				index = index + 1
 				baab = Chapter()
-				baab.index = index
-				baab.path = BOOK_PATH + index_suffix + ":" + str(index)
 				baab.titles = baab_titles
 				baab.chapters = []
 
@@ -81,7 +77,6 @@ def build_alhassanain_baabs(file, index_suffix: str) -> List[Chapter]:
 			# process chapters
 			chapters = section_soup.select(".Heading2Center")
 			chapters_len = len(chapters)
-			chapter_index = 0
 			for subchapter_index in range(math.ceil(chapters_len / 2)):
 				subchapter_heading_index = subchapter_index * 2
 				
@@ -90,10 +85,7 @@ def build_alhassanain_baabs(file, index_suffix: str) -> List[Chapter]:
 					remaining_chapters = remaining_chapters[:2]
 				chapter_titles = extract_headings(remaining_chapters)
 
-				chapter_index = chapter_index + 1
 				chapter = Chapter()
-				chapter.index = chapter_index
-				chapter.path = baab.path + ":" + str(chapter_index)
 				chapter.titles = chapter_titles
 				chapter.verses = []
 
@@ -103,7 +95,6 @@ def build_alhassanain_baabs(file, index_suffix: str) -> List[Chapter]:
 				last_element = last_element.next_sibling
 
 				verse: Verse = None
-				verse_index = 0
 				while last_element is not None and (isinstance(last_element, NavigableString) or not last_element.select('.Heading2Center')):
 					is_tag = isinstance(last_element, Tag)
 					if is_tag and 'libAr' in last_element['class']:
@@ -112,10 +103,7 @@ def build_alhassanain_baabs(file, index_suffix: str) -> List[Chapter]:
 						if verse != None:
 							chapter.verses.append(verse)
 						
-						verse_index = verse_index + 1
 						verse = Verse()
-						verse.index = verse_index
-						verse.path = chapter.path + ":" + str(verse_index)
 						translation = Translation()
 						translation.name = "hubeali"
 						translation.lang = Language.EN.value
@@ -131,16 +119,12 @@ def build_alhassanain_baabs(file, index_suffix: str) -> List[Chapter]:
 							verse.translations[0].text = last_element.get_text(strip=True)
 
 					last_element = last_element.next_sibling
-				
-				chapter.verse_count = len(chapter.verses)
 
 	
 	return baabs
 			
-def build_alhassanain_volume(file, index_suffix: str, title_en: str, title_ar: str, description: str) -> Chapter:
+def build_alhassanain_volume(file, title_en: str, title_ar: str, description: str) -> Chapter:
 	volume = Chapter()
-	volume.index = int(index_suffix[1:])
-	volume.path = BOOK_PATH + index_suffix
 	volume.titles = {
 		Language.EN.value: title_en,
 		Language.AR.value: title_ar
@@ -148,25 +132,38 @@ def build_alhassanain_volume(file, index_suffix: str, title_en: str, title_ar: s
 	volume.descriptions = {
 			Language.EN.value: description
 	}
-	volume.chapters = build_alhassanain_baabs(file, index_suffix)
+	volume.chapters = build_alhassanain_baabs(file)
 
 	return volume
 
-def set_verse_start_index(book: Chapter, running_verse_index: int) -> int:
-	if has_chapters(book):
-		for chapter in book.chapters:
-			chapter.verse_start_index = running_verse_index
-			running_verse_index = set_verse_start_index(chapter, running_verse_index)
-			chapter.verse_count = running_verse_index - chapter.verse_start_index
-	
-	if has_verses(book):
-		book.verse_start_index = running_verse_index
-		return running_verse_index + book.verse_count
-	
-	return running_verse_index
-
 def post_processor(book: Chapter):
-	set_verse_start_index(book, 0)
+	volume_index = 0
+	kitab_index = 0
+	chapter_index = 0
+	verse_index = 0
+
+	for volume in book.chapters:
+		volume_index = volume_index + 1
+		volume.index = volume_index
+		volume.path = BOOK_PATH + ":" + str(volume_index)
+		volume.verse_start_index = verse_index
+		for kitab in volume.chapters:
+			kitab_index = kitab_index + 1
+			kitab.index = kitab_index
+			kitab.path = volume.path + ":" + str(kitab_index)
+			kitab.verse_start_index = verse_index
+			for chapter in kitab.chapters:
+				chapter_index = chapter_index + 1
+				chapter.index = chapter_index
+				chapter.path = kitab.path + ":" + str(chapter_index)
+				chapter.verse_start_index = verse_index
+				for verse in chapter.verses:
+					verse_index = verse_index + 1
+					verse.index = verse_index
+					verse.path = chapter.path + ":" + str(verse_index)
+				chapter.verse_count = verse_index - chapter.verse_start_index
+			kitab.verse_count = verse_index - kitab.verse_start_index
+		volume.verse_count = verse_index - volume.verse_start_index
 
 def get_path(file):
 	return os.path.join(os.path.dirname(__file__), file)
@@ -187,21 +184,18 @@ def build_kafi() -> Chapter:
 
 	kafi.chapters.append(build_alhassanain_volume(
 		get_path("usul_kafi_v_01_ed_html\\usul_kafi_v_01_ed.htm"),
-		":1",
 		"Volume 1",
 		"جلد اول",
 		"First volume of Al-Kafi"))
 
 	kafi.chapters.append(build_alhassanain_volume(
 		get_path("usul_kafi_v_02_ed_html\\usul_kafi_v_02_ed.htm"),
-		":2",
 		"Volume 2",
 		"جلد 2",
 		"Second volume of Al-Kafi"))
 
 	kafi.chapters.append(build_alhassanain_volume(
 		get_path("usul_kafi_v_03_ed_html\\usul_kafi_v_03_ed.htm"),
-		":3",
 		"Volume 3",
 		"جلد 3",
 		"Third volume of Al-Kafi"))
