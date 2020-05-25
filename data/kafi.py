@@ -192,6 +192,20 @@ def build_kafi() -> Chapter:
 		"جلد اول",
 		"First volume of Al-Kafi"))
 
+	kafi.chapters.append(build_alhassanain_volume(
+		get_path("usul_kafi_v_02_ed_html\\usul_kafi_v_02_ed.htm"),
+		":2",
+		"Volume 2",
+		"جلد 2",
+		"Second volume of Al-Kafi"))
+
+	kafi.chapters.append(build_alhassanain_volume(
+		get_path("usul_kafi_v_03_ed_html\\usul_kafi_v_03_ed.htm"),
+		":3",
+		"Volume 3",
+		"جلد 3",
+		"Third volume of Al-Kafi"))
+
 	post_processor(kafi)
 
 	return kafi
