@@ -120,7 +120,7 @@ def build_alhassanain_baabs(file, index_suffix: str) -> List[Chapter]:
 
 					last_element = last_element.next_sibling
 				
-				chapter.verse_count = verse_index
+				chapter.verse_count = len(chapter.verses)
 
 	
 	return baabs
@@ -140,6 +140,21 @@ def build_alhassanain_volume(file, index_suffix: str, title_en: str, title_ar: s
 
 	return volume
 
+def set_verse_start_index(book: Chapter, running_verse_index: int) -> int:
+	if has_chapters(book):
+		for chapter in book.chapters:
+			chapter.verse_start_index = running_verse_index
+			running_verse_index = set_verse_start_index(chapter, running_verse_index)
+			chapter.verse_count = running_verse_index - chapter.verse_start_index
+	
+	if has_verses(book):
+		book.verse_start_index = running_verse_index
+		return running_verse_index + book.verse_count
+	
+	return running_verse_index
+
+def post_processor(book: Chapter):
+	set_verse_start_index(book, 0)
 
 def get_path(file):
 	return os.path.join(os.path.dirname(__file__), file)
@@ -158,15 +173,28 @@ def build_kafi() -> Chapter:
 	}
 	kafi.chapters = []
 
-	kafi.chapters.append(build_alhassanain_volume(get_path("usul_kafi_v_01_ed_html\\usul_kafi_v_01_ed.htm"), ":1", "Volume 1", "جلد اول", "First volume of Al-Kafi"))
+	kafi.chapters.append(build_alhassanain_volume(
+		get_path("usul_kafi_v_01_ed_html\\usul_kafi_v_01_ed.htm"),
+		":1",
+		"Volume 1",
+		"جلد اول",
+		"First volume of Al-Kafi"))
+
+	post_processor(kafi)
 
 	return kafi
 
+def has_chapters(book: Chapter) -> bool:
+	return hasattr(book, 'chapters') and book.chapters is not None
+
+def has_verses(book: Chapter) -> bool:
+	return hasattr(book, 'verses') and book.verses is not None
+
 def insert_chapter(db: Session, book: Chapter):
-	if hasattr(book, 'chapters') and book.chapters is not None:
+	if has_chapters(book):
 		insert_chapters_list(db, book)
 
-	if hasattr(book, 'verses') and book.verses is not None:
+	if has_verses(book):
 		insert_chapter_content(db, book)
 
 def insert_chapters_list(db: Session, book: Chapter):
