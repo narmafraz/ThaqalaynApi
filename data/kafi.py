@@ -2,6 +2,7 @@ import json
 import logging
 import math
 import os
+import re
 import sqlite3
 import xml.etree.ElementTree
 from sqlite3 import Error
@@ -27,14 +28,16 @@ logger = logging.getLogger(__name__)
 BOOK_INDEX = "al-kafi"
 BOOK_PATH = "/books/" + BOOK_INDEX
 
+TITLE_NUMBERING = re.compile(r' \(\d+\)')
+
 def extract_headings(headings):
 	assert len(headings) > 0, "Did not find headings in " + str(headings)
 	names = {}
 	if len(headings) > 1:
 		names[Language.AR.value] = headings[0].get_text(strip=True)
-		names[Language.EN.value] = headings[1].get_text(strip=True)
+		names[Language.EN.value] = TITLE_NUMBERING.sub('', headings[1].get_text(strip=True))
 	else:
-		names[Language.EN.value] = headings[0].get_text(strip=True)
+		names[Language.EN.value] = TITLE_NUMBERING.sub('', headings[0].get_text(strip=True))
 	return names
 
 
@@ -57,14 +60,23 @@ def build_alhassanain_baabs(file, index_suffix: str) -> List[Chapter]:
 			
 			# process "the book of" chapter
 			baab_titles = extract_headings(headings)
-			index = index + 1
-			baab = Chapter()
-			baab.index = index
-			baab.path = BOOK_PATH + index_suffix + ":" + str(index)
-			baab.titles = baab_titles
-			baab.chapters = []
+			
+			en_title = baab_titles[Language.EN.value]
+			
+			baab = None
+			for existing_baab in baabs:
+				if existing_baab.titles[Language.EN.value] == en_title:
+					baab = existing_baab
+			
+			if not baab:
+				index = index + 1
+				baab = Chapter()
+				baab.index = index
+				baab.path = BOOK_PATH + index_suffix + ":" + str(index)
+				baab.titles = baab_titles
+				baab.chapters = []
 
-			baabs.append(baab)
+				baabs.append(baab)
 
 			# process chapters
 			chapters = section_soup.select(".Heading2Center")
@@ -235,7 +247,7 @@ def insert_chapters_list(db: Session, book: Chapter):
 		last_updated_id = 1
 	)
 	book_part = crud.book_part.upsert(db, obj_in=obj_in)
-	logger.info("Inserted chapter list into book_part ID %i with path %s", book_part.id, book_part.path)
+	logger.info("Inserted chapter list into book_part ID %i with path %s", book_part.id, book.path)
 
 	for chapter in book.chapters:
 		insert_chapter(db, chapter)
