@@ -166,7 +166,7 @@ def post_processor(book: Chapter):
 		volume.verse_count = verse_index - volume.verse_start_index
 
 def get_path(file):
-	return os.path.join(os.path.dirname(__file__), file)
+	return os.path.join(os.path.dirname(__file__), "raw\\" + file)
 
 
 def build_kafi() -> Chapter:
@@ -183,19 +183,19 @@ def build_kafi() -> Chapter:
 	kafi.chapters = []
 
 	kafi.chapters.append(build_alhassanain_volume(
-		get_path("usul_kafi_v_01_ed_html\\usul_kafi_v_01_ed.htm"),
+		get_path("alhassanain_org\\hubeali_com_usul_kafi_v_01_ed_html\\usul_kafi_v_01_ed.htm"),
 		"Volume 1",
 		"جلد اول",
 		"First volume of Al-Kafi"))
 
 	kafi.chapters.append(build_alhassanain_volume(
-		get_path("usul_kafi_v_02_ed_html\\usul_kafi_v_02_ed.htm"),
+		get_path("alhassanain_org\\hubeali_com_usul_kafi_v_02_ed_html\\usul_kafi_v_02_ed.htm"),
 		"Volume 2",
 		"جلد 2",
 		"Second volume of Al-Kafi"))
 
 	kafi.chapters.append(build_alhassanain_volume(
-		get_path("usul_kafi_v_03_ed_html\\usul_kafi_v_03_ed.htm"),
+		get_path("alhassanain_org\\hubeali_com_usul_kafi_v_03_ed_html\\usul_kafi_v_03_ed.htm"),
 		"Volume 3",
 		"جلد 3",
 		"Third volume of Al-Kafi"))

@@ -6,11 +6,4 @@ __pycache__
 out/
 
 # unsure if we want to include the actual data
-data/**/*.txt
-data/**/*.xml
-data/**/*.gif
-data/**/*.jpg
-data/**/*.png
-data/**/*.css
-data/**/*.ttf
-data/**/*.htm
+data/raw/**
