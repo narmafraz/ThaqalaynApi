@@ -46,8 +46,6 @@ def build_alhassanain_baabs(file) -> List[Chapter]:
 	logger.info("Adding Al-Kafi file %s", file)
 
 	with open(file, 'r', encoding='utf8') as qfile:
-		#soup = BeautifulSoup(qfile, 'html.parser')
-		#content_div = soup.find(id="bookContent")
 		inner_html = qfile.read()
 		sections = inner_html.split("<br clear=all>")
 		for section in sections:
@@ -95,7 +93,11 @@ def build_alhassanain_baabs(file) -> List[Chapter]:
 				last_element = last_element.next_sibling
 
 				verse: Verse = None
-				while last_element is not None and (isinstance(last_element, NavigableString) or not last_element.select('.Heading2Center')):
+				while (last_element is not None
+					and (isinstance(last_element, NavigableString) 
+						or ( isinstance(last_element, Tag) and 'Heading2Center' not in last_element['class'])
+						)
+					):
 					is_tag = isinstance(last_element, Tag)
 					if is_tag and 'libAr' in last_element['class']:
 						
@@ -119,6 +121,9 @@ def build_alhassanain_baabs(file) -> List[Chapter]:
 							verse.translations[0].text = last_element.get_text(strip=True)
 
 					last_element = last_element.next_sibling
+
+				if verse != None:
+					chapter.verses.append(verse)
 
 	
 	return baabs
