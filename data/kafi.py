@@ -150,21 +150,34 @@ def post_processor(book: Chapter):
 	for volume in book.chapters:
 		volume_index = volume_index + 1
 		volume.index = volume_index
+		volume.local_index = volume_index
 		volume.path = BOOK_PATH + ":" + str(volume_index)
 		volume.verse_start_index = verse_index
+
+		kitab_local_index = 0
 		for kitab in volume.chapters:
 			kitab_index = kitab_index + 1
 			kitab.index = kitab_index
+			kitab_local_index = kitab_local_index + 1
+			kitab.local_index = kitab_local_index
 			kitab.path = volume.path + ":" + str(kitab_index)
 			kitab.verse_start_index = verse_index
+
+			chapter_local_index = 0
 			for chapter in kitab.chapters:
 				chapter_index = chapter_index + 1
 				chapter.index = chapter_index
+				chapter_local_index = chapter_local_index + 1
+				chapter.local_index = chapter_local_index
 				chapter.path = kitab.path + ":" + str(chapter_index)
 				chapter.verse_start_index = verse_index
+
+				verse_local_index = 0
 				for verse in chapter.verses:
 					verse_index = verse_index + 1
 					verse.index = verse_index
+					verse_local_index = verse_local_index + 1
+					verse.local_index = verse_local_index
 					verse.path = chapter.path + ":" + str(verse_index)
 				chapter.verse_count = verse_index - chapter.verse_start_index
 			kitab.verse_count = verse_index - kitab.verse_start_index
