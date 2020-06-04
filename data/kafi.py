@@ -252,6 +252,7 @@ def insert_chapters_list(db: Session, book: Chapter):
 	for chapter in book.chapters:
 		data_chapter = {
 			"index": chapter.index,
+			"local_index": chapter.local_index,
 			"path": chapter.path
 		}
 
