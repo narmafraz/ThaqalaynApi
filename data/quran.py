@@ -68,7 +68,7 @@ def build_chapters(file: str, verses: List[Verse]) -> List[Chapter]:
 		sura.titles=titles
 		sura.verse_count=ayas
 		sura.verse_start_index=start
-		sura.type=type
+		sura.reveal_type=type
 		sura.order=order
 		sura.rukus=rukus
 		sura.verses=verses[start:ayas+start]
@@ -195,7 +195,7 @@ def insert_chapters_list(db: Session, quran: Quran):
 			"verse_count": chapter.verse_count,
 			"verse_start_index": chapter.verse_start_index,
 			"titles": chapter.titles,
-			"verse_type": chapter.type,
+			"verse_type": chapter.reveal_type,
 			"order": chapter.order,
 			"sajda_type": chapter.sajda_type,
 			"rukus": chapter.rukus

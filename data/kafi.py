@@ -22,7 +22,8 @@ from app.db.session import engine
 from app.schemas.book_part import BookPartCreate
 from data.lib_db import insert_chapter
 from data.lib_model import set_index
-from data.models import Chapter, Language, Quran, Translation, Verse
+from data.models import (Chapter, Crumb, Language, PartType, Quran,
+                         Translation, Verse)
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -69,6 +70,7 @@ def build_alhassanain_baabs(file) -> List[Chapter]:
 			
 			if not baab:
 				baab = Chapter()
+				baab.part_type = PartType.Book
 				baab.titles = baab_titles
 				baab.chapters = []
 
@@ -86,6 +88,7 @@ def build_alhassanain_baabs(file) -> List[Chapter]:
 				chapter_titles = extract_headings(remaining_chapters)
 
 				chapter = Chapter()
+				chapter.part_type = PartType.Chapter
 				chapter.titles = chapter_titles
 				chapter.verses = []
 
@@ -108,6 +111,7 @@ def build_alhassanain_baabs(file) -> List[Chapter]:
 							chapter.verses.append(verse)
 						
 						verse = Verse()
+						verse.part_type = PartType.Hadith
 						translation = Translation()
 						translation.name = "hubeali"
 						translation.lang = Language.EN.value
@@ -140,6 +144,7 @@ def build_alhassanain_volume(file, title_en: str, title_ar: str, description: st
 			Language.EN.value: description
 	}
 	volume.chapters = build_alhassanain_baabs(file)
+	volume.part_type = PartType.Volume
 
 	return volume
 
@@ -182,7 +187,14 @@ def build_kafi() -> Chapter:
 	kafi.verse_start_index = 0
 	kafi.index = BOOK_INDEX
 	kafi.path = BOOK_PATH
-	set_index(kafi, [], 0)
+	
+	crumb = Crumb()
+	crumb.titles = kafi.titles
+	crumb.indexed_titles = kafi.titles
+	crumb.path = kafi.path
+	kafi.crumbs = [crumb]
+
+	set_index(kafi, [0, 0, 0, 0], 0)
 
 	return kafi
 

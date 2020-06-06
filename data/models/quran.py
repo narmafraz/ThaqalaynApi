@@ -2,7 +2,9 @@ from __future__ import annotations
 
 from typing import Dict, List
 
-from data.models.translation import Language, Translation
+from data.models.crumb import Crumb
+from data.models.enums import Language, PartType
+from data.models.translation import Translation
 
 
 class Verse():
@@ -13,6 +15,7 @@ class Verse():
 	chain_text: str
 	sajda_type: str
 	translations: List[Translation]
+	part_type: PartType
 
 class Chapter():
 	verses: List[Verse]
@@ -24,10 +27,12 @@ class Chapter():
 	verse_start_index: int
 	titles: Dict[str, str]
 	descriptions: Dict[str, str]
-	type: str
+	reveal_type: str
 	order: int
 	rukus: int
 	sajda_type: str = None
+	crumbs: List[Crumb]
+	part_type: PartType
 
 class Quran():
 	chapters: List[Chapter]

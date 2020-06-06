@@ -1,6 +1,7 @@
+import copy
 from typing import Dict, List
 
-from data.models import Chapter, Language, Quran, Translation, Verse
+from data.models import Chapter, Crumb, Language, Quran, Translation, Verse
 
 
 def has_chapters(book: Chapter) -> bool:
@@ -32,6 +33,16 @@ def set_index(chapter: Chapter, indexes: List[int], depth: int) -> List[int]:
 			subchapter.local_index = chapter_local_index
 			subchapter.path = chapter.path + ":" + str(chapter_local_index)
 			subchapter.verse_start_index = indexes[-1]
+
+			subchapter.crumbs = copy.copy(chapter.crumbs)
+			crumb = Crumb()
+			crumb.indexed_titles = {
+				Language.EN.value: subchapter.part_type.name + ' ' + str(subchapter.local_index)
+			}
+			crumb.titles = subchapter.titles
+			crumb.path = subchapter.path
+			subchapter.crumbs.append(crumb)
+
 			indexes = set_index(subchapter, indexes, depth + 1)
 		chapter.verse_count = indexes[-1] - chapter.verse_start_index
 
