@@ -7,6 +7,7 @@ from data.models.translation import Language, Translation
 
 class Verse():
 	index: int
+	local_index: int
 	path: str
 	text: str
 	chain_text: str
