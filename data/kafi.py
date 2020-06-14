@@ -164,10 +164,10 @@ def is_arabic_tag(element: Tag) -> bool:
 	return element.has_attr('dir') and element['dir'] == 'rtl'
 
 def is_book_title(element: Tag) -> bool:
-	return element.has_attr('style') and "font-size: x-large; font-weight: bold; text-align: center; text-decoration: underline" in element['style']
+	return element.has_attr('style') and "font-size: x-large" in element['style'] and "font-weight: bold" in element['style'] and "text-align: center" in element['style'] and "text-decoration: underline" in element['style']
 
 def is_chapter_title(element: Tag) -> bool:
-	return element.has_attr('style') and "font-weight: bold; text-align: justify; text-decoration: underline" in element['style']
+	return element.has_attr('style') and "font-weight: bold" in element['style'] and "text-align: justify" in element['style'] and "text-decoration: underline" in element['style']
 
 def is_newline(element) -> bool:
 	return isinstance(element, NavigableString) and WHITESPACE_PATTERN.match(element)
@@ -250,8 +250,12 @@ def build_hubeali_books(dirname) -> List[Chapter]:
 				is_arabic = is_arabic_tag(last_element)
 
 				element_content = get_contents(last_element)
-				is_end_of_hadith = END_OF_HADITH_PATTERN.search(element_content)
+				element_content = element_content.replace('style="font-style: italic; font-weight: bold"', 'class="ibTxt"')
+				element_content = element_content.replace('style="font-weight: bold"', 'class="bTxt"')
+				element_content = element_content.replace('style="font-style: italic"', 'class="iTxt"')
 
+				is_end_of_hadith = END_OF_HADITH_PATTERN.search(element_content)
+				
 				if is_book_title(last_element):
 					book_title = element_content
 				elif is_chapter_title(last_element):
