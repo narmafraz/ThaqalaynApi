@@ -1,3 +1,4 @@
+import glob
 import json
 import logging
 import math
@@ -28,7 +29,7 @@ from data.models import (Chapter, Crumb, Language, PartType, Quran,
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-BOOK_INDEX = "al-kafi"
+BOOK_INDEX = "al-kafi-ha"
 BOOK_PATH = "/books/" + BOOK_INDEX
 
 TITLE_NUMBERING = re.compile(r' \(\d+\)')
@@ -133,8 +134,148 @@ def build_alhassanain_baabs(file) -> List[Chapter]:
 
 	
 	return baabs
-			
-def build_alhassanain_volume(file, title_en: str, title_ar: str, description: str) -> Chapter:
+
+VOLUME_HEADING_PATTERN = re.compile("^AL-KAFI VOLUME")
+TABLE_OF_CONTENTS_PATTERN = re.compile("^TABLE OF CONTENTS")
+WHITESPACE_PATTERN = re.compile("^\\s*$")
+END_OF_HADITH_PATTERN = re.compile("<sup>\[\d+\]</sup>\s*$")
+
+def we_dont_care(heading):
+	if heading is None:
+		return True
+	
+	htext = heading.get_text(strip=True).upper()
+	if VOLUME_HEADING_PATTERN.match(htext):
+		return True
+	
+	return False
+
+def table_of_contents(heading):
+	htext = heading.get_text(strip=True).upper()
+	return TABLE_OF_CONTENTS_PATTERN.match(htext)
+
+def get_contents(element):
+	return "".join([str(x) for x in element.contents])
+
+def join_texts(texts: List[str]) -> str:
+	return "\n".join([text for text in texts])
+
+def is_arabic_tag(element: Tag) -> bool:
+	return element.has_attr('dir') and element['dir'] == 'rtl'
+
+def is_book_title(element: Tag) -> bool:
+	return element.has_attr('style') and "font-size: x-large; font-weight: bold; text-align: center; text-decoration: underline" in element['style']
+
+def is_chapter_title(element: Tag) -> bool:
+	return element.has_attr('style') and "font-weight: bold; text-align: justify; text-decoration: underline" in element['style']
+
+def is_newline(element) -> bool:
+	return isinstance(element, NavigableString) and WHITESPACE_PATTERN.match(element)
+
+def add_hadith(chapter: Chapter, hadith_ar: List[str], hadith_en: List[str]):
+	hadith = Verse()
+	hadith.part_type = PartType.Hadith
+	hadith.text = join_texts(hadith_ar)
+	
+	translation = Translation()
+	translation.name = "hubeali"
+	translation.lang = Language.EN.value
+	translation.text = join_texts(hadith_en)
+	hadith.translations = [translation]
+	
+	chapter.verses.append(hadith)
+
+def build_hubeali_books(dirname) -> List[Chapter]:
+	books: List[Chapter] = []
+	logger.info("Adding Al-Kafi dir %s", dirname)
+
+	cfiles = glob.glob(dirname + "c*.xhtml")
+
+
+	book = None
+	chapter = None
+	book_title = None
+	chapter_title = None
+	for cfile in cfiles:
+		logger.info("Processing file %s", cfile)
+
+		with open(cfile, 'r', encoding='utf8') as qfile:
+			file_html = qfile.read()
+			soup = BeautifulSoup(file_html, 'html.parser')
+
+			heading = soup.body.h1
+			if we_dont_care(heading):
+				continue
+
+			if table_of_contents(heading):
+				book_title = get_contents(soup.body.contents[-2])
+				continue
+
+			heading_en = get_contents(heading.a)
+
+			if book_title:
+				book = Chapter()
+				book.part_type = PartType.Book
+				book.titles = {}
+				# Arabic title comes from previous file
+				book.titles[Language.AR.value] = book_title
+				book.titles[Language.EN.value] = heading_en
+				book_title = None
+				book.chapters = []
+
+				books.append(book)
+			elif chapter_title or not chapter:
+				chapter = Chapter()
+				chapter.part_type = PartType.Chapter
+				chapter.titles = {}
+				chapter.titles[Language.AR.value] = chapter_title
+				chapter.titles[Language.EN.value] = heading_en
+				chapter_title = None
+				chapter.verses = []
+
+				book.chapters.append(chapter)
+
+
+			last_element = soup.find('p', 'first-in-chapter')
+
+			hadith_ar = []
+			hadith_en = []
+
+			while last_element:
+				if is_newline(last_element):
+					last_element = last_element.next_sibling
+					continue
+
+				is_tag = isinstance(last_element, Tag)
+				is_arabic = is_arabic_tag(last_element)
+
+				element_content = get_contents(last_element)
+				is_end_of_hadith = END_OF_HADITH_PATTERN.search(element_content)
+
+				if is_book_title(last_element):
+					book_title = element_content
+				elif is_chapter_title(last_element):
+					chapter_title = element_content
+				elif is_arabic:
+					hadith_ar.append(element_content)
+				else:
+					hadith_en.append(element_content)
+				
+				if is_end_of_hadith:
+					add_hadith(chapter, hadith_ar, hadith_en)
+
+					hadith_ar = []
+					hadith_en = []
+
+				last_element = last_element.next_sibling
+
+			if hadith_ar and hadith_en:
+				add_hadith(chapter, hadith_ar, hadith_en)
+
+
+	return books
+
+def build_volume(file, title_en: str, title_ar: str, description: str) -> Chapter:
 	volume = Chapter()
 	volume.titles = {
 		Language.EN.value: title_en,
@@ -143,7 +284,7 @@ def build_alhassanain_volume(file, title_en: str, title_ar: str, description: st
 	volume.descriptions = {
 			Language.EN.value: description
 	}
-	volume.chapters = build_alhassanain_baabs(file)
+	volume.chapters = build_hubeali_books(file)
 	volume.part_type = PartType.Volume
 
 	return volume
@@ -165,23 +306,29 @@ def build_kafi() -> Chapter:
 	}
 	kafi.chapters = []
 
-	kafi.chapters.append(build_alhassanain_volume(
-		get_path("alhassanain_org\\hubeali_com_usul_kafi_v_01_ed_html\\usul_kafi_v_01_ed.htm"),
+	kafi.chapters.append(build_volume(
+		get_path("hubeali_com\\Al-Kafi-Volume-1\\"),
 		"Volume 1",
 		"جلد اول",
 		"First volume of Al-Kafi"))
 
-	kafi.chapters.append(build_alhassanain_volume(
-		get_path("alhassanain_org\\hubeali_com_usul_kafi_v_02_ed_html\\usul_kafi_v_02_ed.htm"),
-		"Volume 2",
-		"جلد 2",
-		"Second volume of Al-Kafi"))
+	# kafi.chapters.append(build_volume(
+	# 	get_path("alhassanain_org\\hubeali_com_usul_kafi_v_01_ed_html\\usul_kafi_v_01_ed.htm"),
+	# 	"Volume 1",
+	# 	"جلد اول",
+	# 	"First volume of Al-Kafi"))
 
-	kafi.chapters.append(build_alhassanain_volume(
-		get_path("alhassanain_org\\hubeali_com_usul_kafi_v_03_ed_html\\usul_kafi_v_03_ed.htm"),
-		"Volume 3",
-		"جلد 3",
-		"Third volume of Al-Kafi"))
+	# kafi.chapters.append(build_volume(
+	# 	get_path("alhassanain_org\\hubeali_com_usul_kafi_v_02_ed_html\\usul_kafi_v_02_ed.htm"),
+	# 	"Volume 2",
+	# 	"جلد 2",
+	# 	"Second volume of Al-Kafi"))
+
+	# kafi.chapters.append(build_volume(
+	# 	get_path("alhassanain_org\\hubeali_com_usul_kafi_v_03_ed_html\\usul_kafi_v_03_ed.htm"),
+	# 	"Volume 3",
+	# 	"جلد 3",
+	# 	"Third volume of Al-Kafi"))
 
 	# post_processor(kafi)
 	kafi.verse_start_index = 0
