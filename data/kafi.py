@@ -194,6 +194,84 @@ def add_hadith(chapter: Chapter, hadith_ar: List[str], hadith_en: List[str], par
 	
 	chapter.verses.append(hadith)
 
+CORRECTIONS = {
+	'c005.xhtml': [
+		{
+			'before': '<a id="_ftnref13"/><sup>[13]</sup> ',
+			'after': ''
+		}
+	],
+	'c072.xhtml': [
+		{
+			'before': 'Chapater 4',
+			'after': 'Chapter 4'
+		}
+	],
+	'c107.xhtml': [
+		{
+			'before': '<p style="text-align: justify" dir="rtl">&#1576;&#1575;<span style="font-weight: bold; text-decoration: underline">',
+			'after': '<p style="text-align: justify; font-weight: bold; text-decoration: underline" dir="rtl">&#1576;&#1575;'
+		},
+		{
+			'before': '</span></p>',
+			'after': '</p>'
+		}
+	],
+	'c150.xhtml': [
+		{
+			'before': '<p style="text-align: justify" dir="rtl">&#1576;&#1614;&#1575;<span style="font-weight: bold; text-decoration: underline">',
+			'after': '<p style="text-align: justify; font-weight: bold; text-decoration: underline" dir="rtl">&#1576;&#1614;&#1575;'
+		},
+		{
+			'before': '</span></p>',
+			'after': '</p>'
+		}
+	],
+	'c187.xhtml': [
+		{
+			'before': '<p style="text-align: justify" dir="rtl">&#1576;&#1575;<span style="font-weight: bold; text-decoration: underline">',
+			'after': '<p style="text-align: justify; font-weight: bold; text-decoration: underline" dir="rtl">&#1576;&#1575;'
+		},
+		{
+			'before': '</span></p>',
+			'after': '</p>'
+		}
+	], # Volume 2
+	'c134.xhtml': [
+		{
+			'before': 'Chater',
+			'after': 'Chapter'
+		}
+	],
+	'c223.xhtml': [
+		{
+			'before': 'Cahpter',
+			'after': 'Chapter'
+		}
+	],
+	'c239.xhtml': [
+		{
+			'before': '<p style="text-align: justify" dir="rtl">&#1576;&#1614;&#1575;<span style="font-weight: bold; text-decoration: underline">',
+			'after': '<p style="text-align: justify; font-weight: bold; text-decoration: underline" dir="rtl">&#1576;&#1614;&#1575;'
+		},
+		{
+			'before': '</span></p>',
+			'after': '</p>'
+		}
+	]
+}
+
+def file_correction(filepath: str, content: str) -> str:
+	filename = os.path.basename(filepath)
+	
+	if filename in CORRECTIONS:
+		corrections = CORRECTIONS[filename]
+		for correction in corrections:
+			content = content.replace(correction['before'], correction['after'])
+
+	return content
+
+
 def build_hubeali_books(dirname) -> List[Chapter]:
 	books: List[Chapter] = []
 	logger.info("Adding Al-Kafi dir %s", dirname)
@@ -212,6 +290,7 @@ def build_hubeali_books(dirname) -> List[Chapter]:
 
 		with open(cfile, 'r', encoding='utf8') as qfile:
 			file_html = qfile.read()
+			file_html = file_correction(cfile, file_html)
 			soup = BeautifulSoup(file_html, 'html.parser')
 
 			heading = soup.body.h1
