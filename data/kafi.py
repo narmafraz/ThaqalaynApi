@@ -137,8 +137,9 @@ def build_alhassanain_baabs(file) -> List[Chapter]:
 
 VOLUME_HEADING_PATTERN = re.compile("^AL-KAFI VOLUME")
 TABLE_OF_CONTENTS_PATTERN = re.compile("^TABLE OF CONTENTS")
-WHITESPACE_PATTERN = re.compile("^\\s*$")
-END_OF_HADITH_PATTERN = re.compile("<sup>\[\d+\]</sup>\s*$")
+WHITESPACE_PATTERN = re.compile(r"^\s*$")
+END_OF_HADITH_PATTERN = re.compile(r"<sup>\[\d+\]</sup>\s*$")
+END_OF_HADITH_CLEANUP_PATTERN = re.compile(r'<a id="[^"]+"/?>(</a>)?<sup>\[\d+\]</sup>\s*$')
 
 def we_dont_care(heading):
 	if heading is None:
@@ -167,7 +168,7 @@ def is_section_break_tag(element: Tag) -> bool:
 	return element.has_attr('class') and 'section-break' in element['class']
 
 def is_book_title(element: Tag) -> bool:
-	return element.has_attr('style') and "font-size: x-large" in element['style'] and "font-weight: bold" in element['style'] and "text-align: center" in element['style'] and "text-decoration: underline" in element['style']
+	return element.has_attr('style') and ("font-size: x-large" in element['style'] or "font-size: xx-large" in element['style']) and "font-weight: bold" in element['style'] and "text-align: center" in element['style'] and "text-decoration: underline" in element['style']
 
 def is_chapter_title(element: Tag) -> bool:
 	return element.has_attr('style') and "font-weight: bold" in element['style'] and "text-decoration: underline" in element['style']
@@ -179,11 +180,16 @@ def add_hadith(chapter: Chapter, hadith_ar: List[str], hadith_en: List[str], par
 	hadith = Verse()
 	hadith.part_type = part_type
 	hadith.text = join_texts(hadith_ar)
+
+	text_en = join_texts(hadith_en)
+	text_en = END_OF_HADITH_CLEANUP_PATTERN.sub('', text_en)
+	if END_OF_HADITH_PATTERN.search(text_en):
+		raise Exception(text_en)
 	
 	translation = Translation()
 	translation.name = "hubeali"
 	translation.lang = Language.EN.value
-	translation.text = join_texts(hadith_en)
+	translation.text = text_en
 	hadith.translations = [translation]
 	
 	chapter.verses.append(hadith)
@@ -273,6 +279,7 @@ def build_hubeali_books(dirname) -> List[Chapter]:
 						hadith_en = []
 
 					book_title_ar = element_content
+					chapter = None
 				elif is_chapter_title(last_element):
 					if hadith_ar and hadith_en:
 						add_hadith(chapter, hadith_ar, hadith_en)
@@ -331,6 +338,24 @@ def build_kafi() -> Chapter:
 		"Volume 1",
 		"جلد اول",
 		"First volume of Al-Kafi"))
+
+	kafi.chapters.append(build_volume(
+		get_path("hubeali_com\\Al-Kafi-Volume-2\\"),
+		"Volume 2",
+		"جلد 2",
+		"Second volume of Al-Kafi"))
+
+	kafi.chapters.append(build_volume(
+		get_path("hubeali_com\\Al-Kafi-Volume-3\\"),
+		"Volume 3",
+		"جلد 3",
+		"Third volume of Al-Kafi"))
+
+	kafi.chapters.append(build_volume(
+		get_path("hubeali_com\\Al-Kafi-Volume-4\\"),
+		"Volume 4",
+		"جلد 4",
+		"Forth volume of Al-Kafi"))
 
 	# kafi.chapters.append(build_volume(
 	# 	get_path("alhassanain_org\\hubeali_com_usul_kafi_v_01_ed_html\\usul_kafi_v_01_ed.htm"),
