@@ -21,3 +21,4 @@ class PartType(AutoName):
     Book = auto()
     Chapter = auto()
     Hadith = auto()
+    Heading = auto()

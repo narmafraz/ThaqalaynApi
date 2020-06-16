@@ -29,7 +29,7 @@ from data.models import (Chapter, Crumb, Language, PartType, Quran,
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-BOOK_INDEX = "al-kafi-ha"
+BOOK_INDEX = "al-kafi"
 BOOK_PATH = "/books/" + BOOK_INDEX
 
 TITLE_NUMBERING = re.compile(r' \(\d+\)')
@@ -163,18 +163,21 @@ def join_texts(texts: List[str]) -> str:
 def is_arabic_tag(element: Tag) -> bool:
 	return element.has_attr('dir') and element['dir'] == 'rtl'
 
+def is_section_break_tag(element: Tag) -> bool:
+	return element.has_attr('class') and 'section-break' in element['class']
+
 def is_book_title(element: Tag) -> bool:
 	return element.has_attr('style') and "font-size: x-large" in element['style'] and "font-weight: bold" in element['style'] and "text-align: center" in element['style'] and "text-decoration: underline" in element['style']
 
 def is_chapter_title(element: Tag) -> bool:
-	return element.has_attr('style') and "font-weight: bold" in element['style'] and "text-align: justify" in element['style'] and "text-decoration: underline" in element['style']
+	return element.has_attr('style') and "font-weight: bold" in element['style'] and "text-decoration: underline" in element['style']
 
 def is_newline(element) -> bool:
 	return isinstance(element, NavigableString) and WHITESPACE_PATTERN.match(element)
 
-def add_hadith(chapter: Chapter, hadith_ar: List[str], hadith_en: List[str]):
+def add_hadith(chapter: Chapter, hadith_ar: List[str], hadith_en: List[str], part_type: PartType = PartType.Hadith):
 	hadith = Verse()
-	hadith.part_type = PartType.Hadith
+	hadith.part_type = part_type
 	hadith.text = join_texts(hadith_ar)
 	
 	translation = Translation()
@@ -194,8 +197,10 @@ def build_hubeali_books(dirname) -> List[Chapter]:
 
 	book = None
 	chapter = None
-	book_title = None
-	chapter_title = None
+	book_title_ar = None
+	chapter_title_ar = None
+	hadith_ar = []
+	hadith_en = []
 	for cfile in cfiles:
 		logger.info("Processing file %s", cfile)
 
@@ -208,38 +213,41 @@ def build_hubeali_books(dirname) -> List[Chapter]:
 				continue
 
 			if table_of_contents(heading):
-				book_title = get_contents(soup.body.contents[-2])
+				book_title_ar = get_contents(soup.body.contents[-2])
 				continue
 
 			heading_en = get_contents(heading.a)
 
-			if book_title:
+			if book_title_ar:
 				book = Chapter()
 				book.part_type = PartType.Book
 				book.titles = {}
 				# Arabic title comes from previous file
-				book.titles[Language.AR.value] = book_title
+				book.titles[Language.AR.value] = book_title_ar
 				book.titles[Language.EN.value] = heading_en
-				book_title = None
+				book_title_ar = None
 				book.chapters = []
 
 				books.append(book)
-			elif chapter_title or not chapter:
+
+			elif (chapter_title_ar or not chapter) and heading_en.startswith('Chapter'):
 				chapter = Chapter()
 				chapter.part_type = PartType.Chapter
 				chapter.titles = {}
-				chapter.titles[Language.AR.value] = chapter_title
+				chapter.titles[Language.AR.value] = chapter_title_ar
 				chapter.titles[Language.EN.value] = heading_en
-				chapter_title = None
+				chapter_title_ar = None
 				chapter.verses = []
 
 				book.chapters.append(chapter)
 
+			elif chapter_title_ar:
+				add_hadith(chapter, [chapter_title_ar], [heading_en], PartType.Heading)
+
+				chapter_title_ar = None
+
 
 			last_element = soup.find('p', 'first-in-chapter')
-
-			hadith_ar = []
-			hadith_en = []
 
 			while last_element:
 				if is_newline(last_element):
@@ -247,6 +255,8 @@ def build_hubeali_books(dirname) -> List[Chapter]:
 					continue
 
 				is_tag = isinstance(last_element, Tag)
+				is_paragraph = is_tag and last_element.name == 'p'
+				is_not_section_break_paragraph = is_paragraph and not is_section_break_tag(last_element)
 				is_arabic = is_arabic_tag(last_element)
 
 				element_content = get_contents(last_element)
@@ -257,24 +267,30 @@ def build_hubeali_books(dirname) -> List[Chapter]:
 				is_end_of_hadith = END_OF_HADITH_PATTERN.search(element_content)
 				
 				if is_book_title(last_element):
-					book_title = element_content
+					if hadith_ar and hadith_en:
+						add_hadith(chapter, hadith_ar, hadith_en)
+						hadith_ar = []
+						hadith_en = []
+
+					book_title_ar = element_content
 				elif is_chapter_title(last_element):
-					chapter_title = element_content
+					if hadith_ar and hadith_en:
+						add_hadith(chapter, hadith_ar, hadith_en)
+						hadith_ar = []
+						hadith_en = []
+
+					chapter_title_ar = element_content
 				elif is_arabic:
 					hadith_ar.append(element_content)
-				else:
+				elif is_not_section_break_paragraph:
 					hadith_en.append(element_content)
 				
 				if is_end_of_hadith:
 					add_hadith(chapter, hadith_ar, hadith_en)
-
 					hadith_ar = []
 					hadith_en = []
 
 				last_element = last_element.next_sibling
-
-			if hadith_ar and hadith_en:
-				add_hadith(chapter, hadith_ar, hadith_en)
 
 
 	return books

@@ -1,7 +1,8 @@
 import copy
 from typing import Dict, List
 
-from data.models import Chapter, Crumb, Language, Quran, Translation, Verse
+from data.models import (Chapter, Crumb, Language, PartType, Quran,
+                         Translation, Verse)
 
 
 def has_chapters(book: Chapter) -> bool:
@@ -17,11 +18,12 @@ def set_index(chapter: Chapter, indexes: List[int], depth: int) -> List[int]:
 	if has_verses(chapter):
 		verse_local_index = 0
 		for verse in chapter.verses:
-			indexes[depth] = indexes[depth] + 1
-			verse.index = indexes[depth]
-			verse_local_index = verse_local_index + 1
-			verse.local_index = verse_local_index
-			verse.path = chapter.path + ":" + str(verse_local_index)
+			if verse.part_type == PartType.Hadith:
+				indexes[depth] = indexes[depth] + 1
+				verse.index = indexes[depth]
+				verse_local_index = verse_local_index + 1
+				verse.local_index = verse_local_index
+				verse.path = chapter.path + ":" + str(verse_local_index)
 		chapter.verse_count = indexes[depth] - chapter.verse_start_index
 	
 	if has_chapters(chapter):
