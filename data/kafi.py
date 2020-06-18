@@ -6,10 +6,12 @@ import os
 import re
 import sqlite3
 import xml.etree.ElementTree
+from pprint import pprint
 from sqlite3 import Error
 from typing import Dict, List
 
 from bs4 import BeautifulSoup, NavigableString, Tag
+from fastapi.encoders import jsonable_encoder
 from sqlalchemy.orm import Session
 
 from app import crud
@@ -22,7 +24,7 @@ from app.db.base import Base
 from app.db.session import engine
 from app.schemas.book_part import BookPartCreate
 from data.lib_db import insert_chapter
-from data.lib_model import set_index
+from data.lib_model import SEQUENCE_ERRORS, set_index
 from data.models import (Chapter, Crumb, Language, PartType, Quran,
                          Translation, Verse)
 
@@ -168,7 +170,14 @@ def is_section_break_tag(element: Tag) -> bool:
 	return element.has_attr('class') and 'section-break' in element['class']
 
 def is_book_title(element: Tag) -> bool:
-	return element.has_attr('style') and ("font-size: x-large" in element['style'] or "font-size: xx-large" in element['style']) and "font-weight: bold" in element['style'] and "text-align: center" in element['style'] and "text-decoration: underline" in element['style']
+	return element.has_attr('style') \
+		and ("font-size: x-large" in element['style'] or "font-size: xx-large" in element['style']) \
+		and "font-weight: bold" in element['style'] \
+		and "text-align: center" in element['style'] \
+		and ("text-decoration: underline" in element['style'] or "page-break-before: always" in element['style'])
+
+def is_book_ending(element: Tag) -> bool:
+	return element.has_attr('style') and "font-weight: bold" in element['style'] and "text-align: center" in element['style'] and "text-indent: 0" in element['style']
 
 def is_chapter_title(element: Tag) -> bool:
 	return element.has_attr('style') and "font-weight: bold" in element['style'] and "text-decoration: underline" in element['style']
@@ -258,6 +267,108 @@ CORRECTIONS = {
 			'before': '</span></p>',
 			'after': '</p>'
 		}
+	], # Volume 3
+	'c018.xhtml': [
+		{
+			'before': 'Chapater',
+			'after': 'Chapter'
+		}
+	],
+	'c182.xhtml': [
+		{
+			'before': '<p style="text-align: justify" dir="rtl">&#1576;&#1575;&#1576;<span style="font-weight: bold; text-decoration: underline">',
+			'after': '<p style="text-align: justify; font-weight: bold; text-decoration: underline" dir="rtl">&#1576;&#1575;&#1576;'
+		},
+		{
+			'before': '</span></p>',
+			'after': '</p>'
+		}
+	],
+	'c162.xhtml': [
+		{
+			'before': 'Chapater',
+			'after': 'Chapter'
+		}
+	], # Volume 4
+	'c175.xhtml': [
+		{
+			'before': 'Chater',
+			'after': 'Chapter'
+		}
+	],
+	'c272.xhtml': [
+		{
+			'before': 'Chater',
+			'after': 'Chapter'
+		}
+	],
+	'c281.xhtml': [
+		{
+			'before': 'Chapaater',
+			'after': 'Chapter'
+		}
+	],
+	'c287.xhtml': [
+		{
+			'before': 'Chater',
+			'after': 'Chapter'
+		}
+	],
+	'c315.xhtml': [
+		{
+			'before': 'Chater',
+			'after': 'Chapter'
+		}
+	],
+	'c325.xhtml': [
+		{
+			'before': 'Chater',
+			'after': 'Chapter'
+		}
+	], # Volume 5
+	'c135.xhtml': [
+		{
+			'before': '<p style="font-weight: bold; text-align: justify" dir="rtl">&#1576;<span style="text-decoration: underline">',
+			'after': '<p style="text-align: justify; font-weight: bold; text-decoration: underline" dir="rtl">&#1576;'
+		},
+		{
+			'before': '</span></p>',
+			'after': '</p>'
+		}
+	],
+	'c336.xhtml': [
+		{
+			'before': 'Chhapter 140',
+			'after': 'Chapter 140'
+		}
+	], # Volume 6
+	'c161.xhtml': [
+		{
+			'before': 'Chapater 16',
+			'after': 'Chapter 16'
+		}
+	],
+	'c241.xhtml': [
+		{
+			'before': '<p style="text-align: justify; text-decoration: underline" dir="rtl"><span style="font-weight: bold">',
+			'after': '<p style="text-align: justify; font-weight: bold; text-decoration: underline" dir="rtl">'
+		},
+		{
+			'before': '</span></p>',
+			'after': '</p>'
+		}
+	], # Volume 7
+	'c046.xhtml': [
+		{
+			'before': 'Chapter&#160; 1b',
+			'after': 'Chapter 1b'
+		}
+	],
+	'c290.xhtml': [
+		{
+			'before': '<p style="font-weight: bold; text-align: justify" dir="rtl">',
+			'after': '<p style="text-align: justify; font-weight: bold; text-decoration: underline" dir="rtl">'
+		}
 	]
 }
 
@@ -302,6 +413,9 @@ def build_hubeali_books(dirname) -> List[Chapter]:
 				continue
 
 			heading_en = get_contents(heading.a)
+			# sometimes the anchor is early terminated
+			if not heading_en:
+				heading_en = get_contents(heading)
 
 			if book_title_ar:
 				book = Chapter()
@@ -353,7 +467,7 @@ def build_hubeali_books(dirname) -> List[Chapter]:
 				
 				if is_book_title(last_element):
 					if hadith_ar and hadith_en:
-						add_hadith(chapter, hadith_ar, hadith_en)
+						add_hadith(chapter, hadith_ar, hadith_en, PartType.Heading)
 						hadith_ar = []
 						hadith_en = []
 
@@ -361,13 +475,22 @@ def build_hubeali_books(dirname) -> List[Chapter]:
 					chapter = None
 				elif is_chapter_title(last_element):
 					if hadith_ar and hadith_en:
-						add_hadith(chapter, hadith_ar, hadith_en)
+						if chapter:
+							add_hadith(chapter, hadith_ar, hadith_en)
+						else:
+							book.descriptions = {}
+							book.descriptions[Language.AR.value] = join_texts(hadith_ar)
+							book.descriptions[Language.EN.value] = join_texts(hadith_en)
 						hadith_ar = []
 						hadith_en = []
 
 					chapter_title_ar = element_content
 				elif is_arabic:
 					hadith_ar.append(element_content)
+				# elif is_book_ending(last_element):
+				# 	add_hadith(chapter, hadith_ar, [element_content], PartType.Heading)
+				# 	hadith_ar = []
+				# 	hadith_en = []
 				elif is_not_section_break_paragraph:
 					hadith_en.append(element_content)
 				
@@ -436,6 +559,30 @@ def build_kafi() -> Chapter:
 		"جلد 4",
 		"Forth volume of Al-Kafi"))
 
+	kafi.chapters.append(build_volume(
+		get_path("hubeali_com\\Al-Kafi-Volume-5\\"),
+		"Volume 5",
+		"جلد 5",
+		"Fifth volume of Al-Kafi"))
+
+	kafi.chapters.append(build_volume(
+		get_path("hubeali_com\\Al-Kafi-Volume-6\\"),
+		"Volume 6",
+		"جلد 6",
+		"Sixth volume of Al-Kafi"))
+
+	kafi.chapters.append(build_volume(
+		get_path("hubeali_com\\Al-Kafi-Volume-7\\"),
+		"Volume 7",
+		"جلد 7",
+		"Seventh volume of Al-Kafi"))
+
+	# kafi.chapters.append(build_volume(
+	# 	get_path("hubeali_com\\Al-Kafi-Volume-8\\"),
+	# 	"Volume 8",
+	# 	"جلد 8",
+	# 	"Eighth volume of Al-Kafi"))
+
 	# kafi.chapters.append(build_volume(
 	# 	get_path("alhassanain_org\\hubeali_com_usul_kafi_v_01_ed_html\\usul_kafi_v_01_ed.htm"),
 	# 	"Volume 1",
@@ -471,4 +618,10 @@ def build_kafi() -> Chapter:
 
 def init_kafi(db_session: Session):
 	book = build_kafi()
+
+	with open(get_path('kafi.json'), 'w', encoding='utf-8') as f:
+		json.dump(jsonable_encoder(book), f, ensure_ascii=False, indent=2, sort_keys=True)
+
 	insert_chapter(db_session, book)
+
+	pprint(SEQUENCE_ERRORS)

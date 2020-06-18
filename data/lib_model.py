@@ -1,9 +1,13 @@
 import copy
+import re
 from typing import Dict, List
 
 from data.models import (Chapter, Crumb, Language, PartType, Quran,
                          Translation, Verse)
 
+CHAPTER_TITLE_PATTERN = re.compile("Chapter (\d+)")
+
+SEQUENCE_ERRORS = []
 
 def has_chapters(book: Chapter) -> bool:
 	return hasattr(book, 'chapters') and book.chapters is not None
@@ -26,6 +30,8 @@ def set_index(chapter: Chapter, indexes: List[int], depth: int) -> List[int]:
 				verse.path = chapter.path + ":" + str(verse_local_index)
 		chapter.verse_count = indexes[depth] - chapter.verse_start_index
 	
+	report_numbering = True
+	sequence = None
 	if has_chapters(chapter):
 		chapter_local_index = 0
 		for subchapter in chapter.chapters:
@@ -35,6 +41,20 @@ def set_index(chapter: Chapter, indexes: List[int], depth: int) -> List[int]:
 			subchapter.local_index = chapter_local_index
 			subchapter.path = chapter.path + ":" + str(chapter_local_index)
 			subchapter.verse_start_index = indexes[-1]
+
+			if report_numbering and subchapter.part_type == PartType.Chapter:
+				chapter_number_str = CHAPTER_TITLE_PATTERN.search(subchapter.titles['en'])
+				chapter_number = int(chapter_number_str.group(1))
+				if sequence and sequence + 1 != chapter_number:
+					error_msg = 'Chapter ' + str(chapter_local_index) + ' with indexes ' + str(indexes) + ' does not match title ' + str(subchapter.titles)
+					print(error_msg)
+					SEQUENCE_ERRORS.append(error_msg)
+					# raise Exception('Chapter ' + str(chapter_local_index) + ' with indexes ' + str(indexes) + ' does not match title ' + str(subchapter.titles))
+				sequence = chapter_number
+				# if chapter_number != chapter_local_index:
+					# print('Chapter ' + str(chapter_local_index) + ' with indexes ' + str(indexes) + ' does not match title ' + str(subchapter.titles))
+					# report_numbering = False
+					# raise Exception('Chapter ' + str(chapter_local_index) + ' with indexes ' + str(indexes) + ' does not match title ' + str(subchapter.titles))
 
 			subchapter.crumbs = copy.copy(chapter.crumbs)
 			crumb = Crumb()
