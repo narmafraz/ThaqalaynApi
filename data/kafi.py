@@ -23,6 +23,7 @@ from app.db import base
 from app.db.base import Base
 from app.db.session import engine
 from app.schemas.book_part import BookPartCreate
+from data.kafi_corrections import file_correction
 from data.lib_db import insert_chapter
 from data.lib_model import SEQUENCE_ERRORS, set_index
 from data.models import (Chapter, Crumb, Language, PartType, Quran,
@@ -203,185 +204,6 @@ def add_hadith(chapter: Chapter, hadith_ar: List[str], hadith_en: List[str], par
 	
 	chapter.verses.append(hadith)
 
-CORRECTIONS = {
-	'c005.xhtml': [
-		{
-			'before': '<a id="_ftnref13"/><sup>[13]</sup> ',
-			'after': ''
-		}
-	],
-	'c072.xhtml': [
-		{
-			'before': 'Chapater 4',
-			'after': 'Chapter 4'
-		}
-	],
-	'c107.xhtml': [
-		{
-			'before': '<p style="text-align: justify" dir="rtl">&#1576;&#1575;<span style="font-weight: bold; text-decoration: underline">',
-			'after': '<p style="text-align: justify; font-weight: bold; text-decoration: underline" dir="rtl">&#1576;&#1575;'
-		},
-		{
-			'before': '</span></p>',
-			'after': '</p>'
-		}
-	],
-	'c150.xhtml': [
-		{
-			'before': '<p style="text-align: justify" dir="rtl">&#1576;&#1614;&#1575;<span style="font-weight: bold; text-decoration: underline">',
-			'after': '<p style="text-align: justify; font-weight: bold; text-decoration: underline" dir="rtl">&#1576;&#1614;&#1575;'
-		},
-		{
-			'before': '</span></p>',
-			'after': '</p>'
-		}
-	],
-	'c187.xhtml': [
-		{
-			'before': '<p style="text-align: justify" dir="rtl">&#1576;&#1575;<span style="font-weight: bold; text-decoration: underline">',
-			'after': '<p style="text-align: justify; font-weight: bold; text-decoration: underline" dir="rtl">&#1576;&#1575;'
-		},
-		{
-			'before': '</span></p>',
-			'after': '</p>'
-		}
-	], # Volume 2
-	'c134.xhtml': [
-		{
-			'before': 'Chater',
-			'after': 'Chapter'
-		}
-	],
-	'c223.xhtml': [
-		{
-			'before': 'Cahpter',
-			'after': 'Chapter'
-		}
-	],
-	'c239.xhtml': [
-		{
-			'before': '<p style="text-align: justify" dir="rtl">&#1576;&#1614;&#1575;<span style="font-weight: bold; text-decoration: underline">',
-			'after': '<p style="text-align: justify; font-weight: bold; text-decoration: underline" dir="rtl">&#1576;&#1614;&#1575;'
-		},
-		{
-			'before': '</span></p>',
-			'after': '</p>'
-		}
-	], # Volume 3
-	'c018.xhtml': [
-		{
-			'before': 'Chapater',
-			'after': 'Chapter'
-		}
-	],
-	'c182.xhtml': [
-		{
-			'before': '<p style="text-align: justify" dir="rtl">&#1576;&#1575;&#1576;<span style="font-weight: bold; text-decoration: underline">',
-			'after': '<p style="text-align: justify; font-weight: bold; text-decoration: underline" dir="rtl">&#1576;&#1575;&#1576;'
-		},
-		{
-			'before': '</span></p>',
-			'after': '</p>'
-		}
-	],
-	'c162.xhtml': [
-		{
-			'before': 'Chapater',
-			'after': 'Chapter'
-		}
-	], # Volume 4
-	'c175.xhtml': [
-		{
-			'before': 'Chater',
-			'after': 'Chapter'
-		}
-	],
-	'c272.xhtml': [
-		{
-			'before': 'Chater',
-			'after': 'Chapter'
-		}
-	],
-	'c281.xhtml': [
-		{
-			'before': 'Chapaater',
-			'after': 'Chapter'
-		}
-	],
-	'c287.xhtml': [
-		{
-			'before': 'Chater',
-			'after': 'Chapter'
-		}
-	],
-	'c315.xhtml': [
-		{
-			'before': 'Chater',
-			'after': 'Chapter'
-		}
-	],
-	'c325.xhtml': [
-		{
-			'before': 'Chater',
-			'after': 'Chapter'
-		}
-	], # Volume 5
-	'c135.xhtml': [
-		{
-			'before': '<p style="font-weight: bold; text-align: justify" dir="rtl">&#1576;<span style="text-decoration: underline">',
-			'after': '<p style="text-align: justify; font-weight: bold; text-decoration: underline" dir="rtl">&#1576;'
-		},
-		{
-			'before': '</span></p>',
-			'after': '</p>'
-		}
-	],
-	'c336.xhtml': [
-		{
-			'before': 'Chhapter 140',
-			'after': 'Chapter 140'
-		}
-	], # Volume 6
-	'c161.xhtml': [
-		{
-			'before': 'Chapater 16',
-			'after': 'Chapter 16'
-		}
-	],
-	'c241.xhtml': [
-		{
-			'before': '<p style="text-align: justify; text-decoration: underline" dir="rtl"><span style="font-weight: bold">',
-			'after': '<p style="text-align: justify; font-weight: bold; text-decoration: underline" dir="rtl">'
-		},
-		{
-			'before': '</span></p>',
-			'after': '</p>'
-		}
-	], # Volume 7
-	'c046.xhtml': [
-		{
-			'before': 'Chapter&#160; 1b',
-			'after': 'Chapter 1b'
-		}
-	],
-	'c290.xhtml': [
-		{
-			'before': '<p style="font-weight: bold; text-align: justify" dir="rtl">',
-			'after': '<p style="text-align: justify; font-weight: bold; text-decoration: underline" dir="rtl">'
-		}
-	]
-}
-
-def file_correction(filepath: str, content: str) -> str:
-	filename = os.path.basename(filepath)
-	
-	if filename in CORRECTIONS:
-		corrections = CORRECTIONS[filename]
-		for correction in corrections:
-			content = content.replace(correction['before'], correction['after'])
-
-	return content
-
 
 def build_hubeali_books(dirname) -> List[Chapter]:
 	books: List[Chapter] = []
@@ -537,50 +359,50 @@ def build_kafi() -> Chapter:
 
 	kafi.chapters.append(build_volume(
 		get_path("hubeali_com\\Al-Kafi-Volume-1\\"),
-		"Volume 1",
-		"جلد اول",
+		"Volume One",
+		"الجزء الأول‏",
 		"First volume of Al-Kafi"))
 
 	kafi.chapters.append(build_volume(
 		get_path("hubeali_com\\Al-Kafi-Volume-2\\"),
-		"Volume 2",
-		"جلد 2",
+		"Volume Two",
+		"الجزء الثاني‏",
 		"Second volume of Al-Kafi"))
 
 	kafi.chapters.append(build_volume(
 		get_path("hubeali_com\\Al-Kafi-Volume-3\\"),
-		"Volume 3",
-		"جلد 3",
+		"Volume Three",
+		"الجزء الثالث‏",
 		"Third volume of Al-Kafi"))
 
 	kafi.chapters.append(build_volume(
 		get_path("hubeali_com\\Al-Kafi-Volume-4\\"),
-		"Volume 4",
-		"جلد 4",
+		"Volume Four",
+		"الجزء الرابع‏",
 		"Forth volume of Al-Kafi"))
 
 	kafi.chapters.append(build_volume(
 		get_path("hubeali_com\\Al-Kafi-Volume-5\\"),
-		"Volume 5",
-		"جلد 5",
+		"Volume Five",
+		"الجزء الخامس‏",
 		"Fifth volume of Al-Kafi"))
 
 	kafi.chapters.append(build_volume(
 		get_path("hubeali_com\\Al-Kafi-Volume-6\\"),
-		"Volume 6",
-		"جلد 6",
+		"Volume Six",
+		"الجزء السادس‏",
 		"Sixth volume of Al-Kafi"))
 
 	kafi.chapters.append(build_volume(
 		get_path("hubeali_com\\Al-Kafi-Volume-7\\"),
-		"Volume 7",
-		"جلد 7",
+		"Volume Seven",
+		"الجزء السابع‏",
 		"Seventh volume of Al-Kafi"))
 
 	# kafi.chapters.append(build_volume(
-	# 	get_path("hubeali_com\\Al-Kafi-Volume-8\\"),
-	# 	"Volume 8",
-	# 	"جلد 8",
+	# 	get_pathe("hubeali_com\\Al-Kafi-Volume-8\\"),
+	# 	"Volume Eight",
+	# 	"الجزء الثامن‏",
 	# 	"Eighth volume of Al-Kafi"))
 
 	# kafi.chapters.append(build_volume(
