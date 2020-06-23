@@ -17,7 +17,10 @@ from app.db import base
 from app.db.base import Base
 from app.db.session import engine
 from app.schemas.book_part import BookPartCreate
-from data.models import Chapter, Language, Quran, Translation, Verse
+from data.lib_db import index_from_path, insert_chapter
+from data.lib_model import set_index
+from data.models import (Chapter, Crumb, Language, PartType, Quran,
+                         Translation, Verse)
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -63,19 +66,20 @@ def build_chapters(file: str, verses: List[Verse]) -> List[Chapter]:
 		}
 
 		sura = Chapter()
-		sura.index=index
-		sura.path=BOOK_PATH + ":" + str(index)
+		# sura.index=index
+		# sura.path=BOOK_PATH + ":" + str(index)
+		sura.part_type = PartType.Chapter
 		sura.titles=titles
-		sura.verse_count=ayas
-		sura.verse_start_index=start
+		# sura.verse_count=ayas
+		# sura.verse_start_index=start
 		sura.reveal_type=type
 		sura.order=order
 		sura.rukus=rukus
 		sura.verses=verses[start:ayas+start]
 
 		# set verse path
-		for verse in sura.verses:
-			verse.path=sura.path + ":" + str(verse.index)
+		# for verse in sura.verses:
+		# 	verse.path=sura.path + ":" + str(verse.index)
 
 		chapters.append(sura)
 
@@ -107,7 +111,8 @@ def build_verses(file):
 			if text and not text.startswith('#'):
 				index=index+1
 				verse = Verse()
-				verse.index=index
+				verse.part_type = PartType.Verse
+				# verse.index=index
 				verse.text=text
 				verse.translations=[]
 
@@ -135,7 +140,7 @@ def get_path(file):
 	return os.path.join(os.path.dirname(__file__), "raw\\" + file)
 
 
-def build_quran() -> Quran:
+def build_quran() -> Chapter:
 	verses = build_verses(get_path("tanzil_net/quran_simple.txt"))
 
 	insert_quran_translation(verses, get_path("tanzil_net/translations/fa.ansarian.txt"), "ansarian", "fa", "Hussain Ansarian", "https://fa.wikipedia.org/wiki/%D8%AD%D8%B3%DB%8C%D9%86_%D8%A7%D9%86%D8%B5%D8%A7%D8%B1%DB%8C%D8%A7%D9%86")
@@ -170,59 +175,44 @@ def build_quran() -> Quran:
 
 	chapters = build_chapters(get_path("tanzil_net/quran-data.xml"), verses)
 
-	q = Quran()
+	q = Chapter()
+	q.index = BOOK_INDEX
+	q.path = BOOK_PATH
+	q.verse_start_index = 0
+	q.part_type = PartType.Book
+	q.titles = {
+		Language.EN.value: "The Holy Quran",
+		Language.AR.value: "القرآن الكريم"
+	}
+	q.descriptions = {
+		Language.EN.value: "Was revealed to the prophet SAW"
+	}
 	q.chapters=chapters
+
+	
+	crumb = Crumb()
+	crumb.titles = q.titles
+	crumb.indexed_titles = q.titles
+	crumb.path = q.path
+	q.crumbs = [crumb]
+
+	set_index(q, [0, 0, 0], 0)
 
 	return q
 
-def insert_chapters_list(db: Session, quran: Quran):
-	data_root = {
-		"titles": {
-			Language.EN.value: "The Holy Quran",
-			Language.AR.value: "القرآن الكريم"
-		},
-		"descriptions": {
-			Language.EN.value: "Was revealed to the prophet SAW"
-		},
-		"chapters": []
-	}
-	chapters = data_root["chapters"]
-
+def insert_verse_content(db: Session, quran: Quran):
 	for chapter in quran.chapters:
-		data_chapter = {
-			"index": chapter.index,
-			"path": chapter.path,
-			"verse_count": chapter.verse_count,
-			"verse_start_index": chapter.verse_start_index,
-			"titles": chapter.titles,
-			"verse_type": chapter.reveal_type,
-			"order": chapter.order,
-			"sajda_type": chapter.sajda_type,
-			"rukus": chapter.rukus
-		}
-		chapters.append(data_chapter)
-
-	obj_in = BookPartCreate (
-		index = BOOK_INDEX,
-		kind = "chapter_list",
-		data = data_root,
-		last_updated_id = 1
-	)
-	book = crud.book_part.upsert(db, obj_in=obj_in)
-	logger.info("Inserted Quran chapter list into book_part ID %i with index %s", book.id, book.index)
-
-def insert_chapter_content(db: Session, quran: Quran):
-	for chapter in quran.chapters:
-		obj_in = BookPartCreate (
-			index = BOOK_INDEX + ":" + str(chapter.index),
-			kind = "verse_list",
-			data = chapter,
-			last_updated_id = 1
-		)
-		book = crud.book_part.upsert(db, obj_in=obj_in)
-		logger.info("Inserted Quran chapter content into book_part ID %i with index %s", book.id, chapter.index)
+		for verse in chapter.verses:
+			obj_in = BookPartCreate (
+				index = index_from_path(chapter.path) + ":" + str(verse.local_index),
+				kind = "verse_content",
+				data = verse,
+				last_updated_id = 1
+			)
+			book = crud.book_part.upsert(db, obj_in=obj_in)
+			logger.info("Inserted Quran verse content into book_part ID %i with index %s", book.id, book.index)
 
 def init_quran(db_session: Session):
 	quran = build_quran()
-	insert_chapters_list(db_session, quran)
-	insert_chapter_content(db_session, quran)
+	insert_chapter(db_session, quran)
+	insert_verse_content(db_session, quran)

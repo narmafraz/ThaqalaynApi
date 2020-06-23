@@ -34,7 +34,7 @@ def insert_chapters_list(db: Session, book: Chapter):
 		last_updated_id = 1
 	)
 	book_part = crud.book_part.upsert(db, obj_in=obj_in)
-	logger.info("Inserted chapter list into book_part ID %i with path %s", book_part.id, book.path)
+	logger.info("Inserted chapter list into book_part ID %i with index %s", book_part.id, book_part.index)
 
 	for chapter in book.chapters:
 		insert_chapter(db, chapter)
@@ -47,4 +47,4 @@ def insert_chapter_content(db: Session, chapter: Chapter):
 		last_updated_id = 1
 	)
 	book = crud.book_part.upsert(db, obj_in=obj_in)
-	logger.info("Inserted chapter content into book_part ID %i with path %s", book.id, chapter.path)
+	logger.info("Inserted chapter content into book_part ID %i with index %s", book.id, book.index)

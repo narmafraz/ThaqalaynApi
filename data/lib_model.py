@@ -22,7 +22,7 @@ def set_index(chapter: Chapter, indexes: List[int], depth: int) -> List[int]:
 	if has_verses(chapter):
 		verse_local_index = 0
 		for verse in chapter.verses:
-			if verse.part_type == PartType.Hadith:
+			if verse.part_type == PartType.Hadith or verse.part_type == PartType.Verse:
 				indexes[depth] = indexes[depth] + 1
 				verse.index = indexes[depth]
 				verse_local_index = verse_local_index + 1
