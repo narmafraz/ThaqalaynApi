@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 def init():
     init_books(db_session)
     # init_quran(db_session)
-    init_kafi(db_session)
+    # init_kafi(db_session)
 
 
 def main():

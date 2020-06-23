@@ -196,7 +196,7 @@ def build_quran() -> Chapter:
 	crumb.path = q.path
 	q.crumbs = [crumb]
 
-	set_index(q, [0, 0, 0], 0)
+	set_index(q, [0, 0], 0)
 
 	return q
 
