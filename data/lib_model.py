@@ -44,17 +44,18 @@ def set_index(chapter: Chapter, indexes: List[int], depth: int) -> List[int]:
 
 			if report_numbering and subchapter.part_type == PartType.Chapter:
 				chapter_number_str = CHAPTER_TITLE_PATTERN.search(subchapter.titles['en'])
-				chapter_number = int(chapter_number_str.group(1))
-				if sequence and sequence + 1 != chapter_number:
-					error_msg = 'Chapter ' + str(chapter_local_index) + ' with indexes ' + str(indexes) + ' does not match title ' + str(subchapter.titles)
-					print(error_msg)
-					SEQUENCE_ERRORS.append(error_msg)
-					# raise Exception('Chapter ' + str(chapter_local_index) + ' with indexes ' + str(indexes) + ' does not match title ' + str(subchapter.titles))
-				sequence = chapter_number
-				# if chapter_number != chapter_local_index:
-					# print('Chapter ' + str(chapter_local_index) + ' with indexes ' + str(indexes) + ' does not match title ' + str(subchapter.titles))
-					# report_numbering = False
-					# raise Exception('Chapter ' + str(chapter_local_index) + ' with indexes ' + str(indexes) + ' does not match title ' + str(subchapter.titles))
+				if chapter_number_str:
+					chapter_number = int(chapter_number_str.group(1))
+					if sequence and sequence + 1 != chapter_number:
+						error_msg = 'Chapter ' + str(chapter_local_index) + ' with indexes ' + str(indexes) + ' does not match title ' + str(subchapter.titles)
+						print(error_msg)
+						SEQUENCE_ERRORS.append(error_msg)
+						# raise Exception('Chapter ' + str(chapter_local_index) + ' with indexes ' + str(indexes) + ' does not match title ' + str(subchapter.titles))
+					sequence = chapter_number
+					# if chapter_number != chapter_local_index:
+						# print('Chapter ' + str(chapter_local_index) + ' with indexes ' + str(indexes) + ' does not match title ' + str(subchapter.titles))
+						# report_numbering = False
+						# raise Exception('Chapter ' + str(chapter_local_index) + ' with indexes ' + str(indexes) + ' does not match title ' + str(subchapter.titles))
 
 			subchapter.crumbs = copy.copy(chapter.crumbs)
 			crumb = Crumb()

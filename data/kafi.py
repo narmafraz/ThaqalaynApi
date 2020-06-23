@@ -141,6 +141,8 @@ def build_alhassanain_baabs(file) -> List[Chapter]:
 VOLUME_HEADING_PATTERN = re.compile("^AL-KAFI VOLUME")
 TABLE_OF_CONTENTS_PATTERN = re.compile("^TABLE OF CONTENTS")
 WHITESPACE_PATTERN = re.compile(r"^\s*$")
+V8_HADITH_TITLE_PATTERN = re.compile(r"^H \d+")
+V8_HADITH_BEGINNING_PATTERN = re.compile(r"^-? ?(1\d+)-?")
 END_OF_HADITH_PATTERN = re.compile(r"<sup>\[\d+\]</sup>\s*$")
 END_OF_HADITH_CLEANUP_PATTERN = re.compile(r'<a id="[^"]+"/?>(</a>)?<sup>\[\d+\]</sup>\s*$')
 
@@ -326,7 +328,122 @@ def build_hubeali_books(dirname) -> List[Chapter]:
 
 	return books
 
-def build_volume(file, title_en: str, title_ar: str, description: str) -> Chapter:
+def build_hubeali_book_8(dirname) -> List[Chapter]:
+	logger.info("Adding Al-Kafi dir %s", dirname)
+
+	cfiles = glob.glob(dirname + "c*.xhtml")
+
+	book = Chapter()
+	book.part_type = PartType.Book
+	book.titles = {}
+	# Arabic title comes from previous file
+	book.titles[Language.AR.value] = "&#1603;&#1578;&#1575;&#1576; &#1575;&#1604;&#1585;&#1617;&#1614;&#1608;&#1618;&#1590;&#1614;&#1577;&#1616;"
+	book.titles[Language.EN.value] = "The Book - Garden (of Flowers)"
+	book.chapters = []
+	
+	is_the_end = False
+	previous_hadith_num = 14449
+	chapter = None
+	chapter_title_ar = None
+	hadith_ar = []
+	hadith_en = []
+	for cfile in cfiles:
+		if is_the_end:
+			break
+
+		logger.info("Processing file %s", cfile)
+
+		with open(cfile, 'r', encoding='utf8') as qfile:
+			file_html = qfile.read()
+			file_html = file_correction(cfile, file_html)
+			soup = BeautifulSoup(file_html, 'html.parser')
+
+			heading = soup.body.h1
+			if we_dont_care(heading):
+				continue
+
+			if table_of_contents(heading):
+				hadith_ar.append(get_contents(soup.body.contents[-2]))
+				continue
+
+			heading_en = get_contents(heading.a)
+			is_hadith_title = V8_HADITH_TITLE_PATTERN.match(heading_en)
+			# sometimes the anchor is early terminated
+			if not heading_en or is_hadith_title:
+				heading_en = get_contents(heading)
+
+			if chapter_title_ar or not chapter:
+				chapter = Chapter()
+				chapter.part_type = PartType.Chapter
+				chapter.titles = {}
+				if chapter_title_ar:
+					chapter.titles[Language.AR.value] = chapter_title_ar
+				else:
+					chapter.titles[Language.AR.value] = "&#1576;&#1616;&#1587;&#1618;&#1605;&#1616; &#1575;&#1604;&#1604;&#1617;&#1614;&#1607;&#1616; &#1575;&#1604;&#1585;&#1617;&#1614;&#1581;&#1618;&#1605;&#1614;&#1606;&#1616; &#1575;&#1604;&#1585;&#1617;&#1614;&#1581;&#1616;&#1610;&#1605;&#1616;"
+				if heading_en:
+					chapter.titles[Language.EN.value] = heading_en
+				else:
+					chapter.titles[Language.EN.value] = "In the name of Allah, the Beneficent, the Merciful"
+				chapter_title_ar = None
+				chapter.verses = []
+
+				book.chapters.append(chapter)
+			elif is_hadith_title:
+				hadith_en.append(heading_en)
+
+
+			last_element = soup.find('p', 'first-in-chapter')
+
+			while last_element:
+				if is_newline(last_element):
+					last_element = last_element.next_sibling
+					continue
+
+				is_tag = isinstance(last_element, Tag)
+				is_paragraph = is_tag and last_element.name == 'p'
+				is_not_section_break_paragraph = is_paragraph and not is_section_break_tag(last_element)
+				is_arabic = is_arabic_tag(last_element)
+
+				element_content = get_contents(last_element)
+				element_content = element_content.replace('style="font-style: italic; font-weight: bold"', 'class="ibTxt"')
+				element_content = element_content.replace('style="font-weight: bold"', 'class="bTxt"')
+				element_content = element_content.replace('style="font-style: italic"', 'class="iTxt"')
+
+				is_new_hadith = V8_HADITH_BEGINNING_PATTERN.match(last_element.get_text(strip=True))
+				is_the_end = element_content.startswith("&#1578;&#1614;&#1605;&#1617;&#1614; &#1603;&#1616;&#1578;&#1614;&#1575;&#1576;&#1615; &#1575;&#1604;&#1585;&#1617;&#1614;&#1608;&#1618;&#1590;&#1614;&#1577;&#1616; &#1605;&#1616;&#1606;&#1614;")
+
+				# We commit the hadith that has been building up until now if we encounter a new hadith beginning
+				if (is_new_hadith or is_the_end) and hadith_ar and hadith_en:
+					add_hadith(chapter, hadith_ar, hadith_en)
+					hadith_ar = []
+					hadith_en = []
+
+				if is_new_hadith:
+					hadith_num = int(is_new_hadith.group(1))
+					if previous_hadith_num + 1 != hadith_num:
+						print("Skipped one hadith " + str(previous_hadith_num) + " to " + str(hadith_num) + " title: " + element_content)
+					previous_hadith_num = hadith_num
+				
+				if is_chapter_title(last_element):
+					if hadith_ar and hadith_en:
+						add_hadith(chapter, hadith_ar, hadith_en)
+						hadith_ar = []
+						hadith_en = []
+
+					chapter_title_ar = element_content
+				elif is_arabic:
+					hadith_ar.append(element_content)
+				elif is_not_section_break_paragraph:
+					hadith_en.append(element_content)
+					if is_the_end:
+						add_hadith(chapter, hadith_ar, hadith_en, PartType.Heading)
+				
+				last_element = last_element.next_sibling
+
+
+	return [book]
+
+def build_volume(file, title_en: str, title_ar: str, description: str, last_volume: bool = False) -> Chapter:
 	volume = Chapter()
 	volume.titles = {
 		Language.EN.value: title_en,
@@ -335,7 +452,10 @@ def build_volume(file, title_en: str, title_ar: str, description: str) -> Chapte
 	volume.descriptions = {
 			Language.EN.value: description
 	}
-	volume.chapters = build_hubeali_books(file)
+	if last_volume:
+		volume.chapters = build_hubeali_book_8(file)
+	else:
+		volume.chapters = build_hubeali_books(file)
 	volume.part_type = PartType.Volume
 
 	return volume
@@ -399,11 +519,11 @@ def build_kafi() -> Chapter:
 		"الجزء السابع‏",
 		"Seventh volume of Al-Kafi"))
 
-	# kafi.chapters.append(build_volume(
-	# 	get_pathe("hubeali_com\\Al-Kafi-Volume-8\\"),
-	# 	"Volume Eight",
-	# 	"الجزء الثامن‏",
-	# 	"Eighth volume of Al-Kafi"))
+	kafi.chapters.append(build_volume(
+		get_path("hubeali_com\\Al-Kafi-Volume-8\\"),
+		"Volume Eight",
+		"الجزء الثامن‏",
+		"Eighth volume of Al-Kafi", True))
 
 	# kafi.chapters.append(build_volume(
 	# 	get_path("alhassanain_org\\hubeali_com_usul_kafi_v_01_ed_html\\usul_kafi_v_01_ed.htm"),
