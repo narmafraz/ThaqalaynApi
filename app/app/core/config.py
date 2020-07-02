@@ -32,7 +32,7 @@ POSTGRES_DB = os.getenv("POSTGRES_DB")
 # SQLALCHEMY_DATABASE_URI = (
 #     f"postgresql://{POSTGRES_USER}:{POSTGRES_PASSWORD}@{POSTGRES_SERVER}/{POSTGRES_DB}"
 # )
-SQLALCHEMY_DATABASE_URI = "sqlite:///database.db?check_same_thread=False"
+SQLALCHEMY_DATABASE_URI = "sqlite:///../database.db?check_same_thread=False"
 
 SMTP_TLS = getenv_boolean("SMTP_TLS", True)
 SMTP_PORT = None
